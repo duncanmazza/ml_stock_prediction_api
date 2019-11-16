@@ -7,9 +7,7 @@ apt-get install sphinx
 
 From the `docs/` directory:
 ```shell script
-cd source
-sphinx-apidoc -f -o . ../..
-cd ../
+sphinx-apidoc -f -o source/_build/ ../
 make html
 ```
 
