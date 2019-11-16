@@ -103,8 +103,12 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# build
+# documentation build
 docs/build
+docs/source/_build
 
 # .idea
 .idea
+
+# api keys
+config.py
