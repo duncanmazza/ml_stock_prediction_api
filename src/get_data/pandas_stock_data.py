@@ -9,6 +9,7 @@ from pandas import DataFrame
 from src.get_data.config import AV_API_KEY
 import os
 from datetime import datetime
+import numpy as np
 
 
 class MissingAPIKeyError(Exception):
@@ -21,9 +22,10 @@ class MissingAPIKeyError(Exception):
 
 def return_stock_data(tickers: [str, ], start_date: datetime, end_date: datetime, src: str = 'av_daily'):
     r"""
-    :param tickers: list of tickers of companies to get stock data from
+    :param tickers: ticker or list of tickers of companies to get stock data from
     :param start_date: datetime object of date for the start date of the stock data
-    :param end_date: datetime object of the date for the end date of the stock data
+    :param end_date: datetime object of the date for the end date of the stock data (note that the date range is
+     inclusive with the lower bound start_date and exclusive with the upper bound end_date)
     :param src: string of data source; options include:
 
          * ``av-intraday`` - Intraday Time Series
@@ -39,10 +41,11 @@ def return_stock_data(tickers: [str, ], start_date: datetime, end_date: datetime
     if AV_API_KEY == "YOUR_KEY_HERE":
         raise MissingAPIKeyError("AV_API_KEY")
     f: DataFrame
-    f = web.DataReader("AAPL", "av-daily", start=datetime(2017, 2, 9), end=datetime(2017, 5, 24), api_key=AV_API_KEY)
+    f = web.DataReader("AAPL", "av-daily", start=start_date, end=end_date, api_key=AV_API_KEY)
     return f
 
-def save_to_csv(tickers: [str, ], start_date: str, end_date: str, src: str = '',
+
+def save_to_csv(tickers: [str, ], start_date: datetime, end_date: datetime, src: str = '',
                 file_path: str = "stock_data.csv"):
     r"""
     Saves
@@ -63,5 +66,9 @@ def save_to_csv(tickers: [str, ], start_date: str, end_date: str, src: str = '',
     stock_data.to_csv(file_path)
 
 
+def numpy_array_of_company_daily_stock_close(ticker: str, start_date: datetime, end_date: datetime):
+    return np.array(return_stock_data(ticker, start_date, end_date, src='av_daily')['close'])
+
+
 if __name__ == "__main__":
-    stock_data = return_stock_data(['APPL'], '2010-01-01', '2010-01-05')
+    stock_data = numpy_array_of_company_daily_stock_close('APPL', datetime(2017, 2, 9), datetime(2017, 2, 11))
