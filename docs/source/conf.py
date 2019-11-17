@@ -16,6 +16,8 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
 
+napoleon_google_docstring = True
+
 
 # -- Project information -----------------------------------------------------
 

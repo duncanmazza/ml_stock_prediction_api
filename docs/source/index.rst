@@ -17,7 +17,7 @@ Welcome to Moneymaker's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   _build/modules
+   _build/modules/
 
 
 Indices and tables
