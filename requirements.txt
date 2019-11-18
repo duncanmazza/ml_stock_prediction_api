@@ -5,3 +5,14 @@ pandas
 pandas_datareader
 matplotlib
 pytest
+six
+python-dateutil
+pymc3
+Pillow
+Theano
+packaging
+tornado
+PyYAML
+Jinja2
+bokeh
+seaborn
