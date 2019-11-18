@@ -11,9 +11,13 @@ from tests.BColors import BColors
 import os
 from datetime import datetime
 import numpy as np
+import requests
 
 
 class MissingAPIKeyError(Exception):
+    """
+    TODO: documentation here
+    """
     def __init__(self, api_key_name, message="You have left the default value in <root>/src/get_data/config.py for an "
                                              "API key unchanged; make sure that you fill this out so you can access "
                                              "your data."):
@@ -49,16 +53,26 @@ def return_stock_data(ticker: str, start_date: datetime, end_date: datetime, src
 
     :return: pandas DataFrame of stock data
     """
-    if src.__contains__("av-"):
-        if AV_API_KEY == "YOUR_KEY_HERE":
-            raise MissingAPIKeyError("AV_API_KEY")
-        f = web.DataReader(ticker, src, start=start_date, end=end_date, api_key=AV_API_KEY)
-    else:  # src == 'yahoo'
-        try:
+    try:
+        if src.__contains__("av-"):
+            if AV_API_KEY == "YOUR_KEY_HERE":
+                raise MissingAPIKeyError("AV_API_KEY")
+            f = web.DataReader(ticker, src, start=start_date, end=end_date, api_key=AV_API_KEY)
+        else:  # src == 'yahoo'
             f = web.get_data_yahoo(ticker, start_date, end_date)
-        except KeyError:
-            print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(ticker))
-            raise Exception
+    except KeyError:
+        print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(ticker) + BColors.DEFAULT)
+        raise Exception
+    except requests.exceptions.SSLError:
+        print(BColors.FAIL + "A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
+                             "internet connection; try again after verifying that you have a successful internet "
+                             "connection." + BColors.DEFAULT)
+        raise requests.exceptions.SSLError
+    except requests.exceptions.ConnectionError:
+        print(BColors.FAIL + "A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a lack of "
+                             "internet connection; try again after verifying that you have a successful internet "
+                             "connection." + BColors.DEFAULT)
+        raise requests.exceptions.ConnectionError
     return f
 
 

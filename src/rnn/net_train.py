@@ -24,7 +24,7 @@ import time
 
 DEVICE = "cuda"  # selects the gpu to be used
 TO_GPU_FAIL_MSG = BColors.FAIL + "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
-                                 "that you have enabled the GPU your settings".format(DEVICE)
+                                 "that you have enabled the GPU your settings".format(DEVICE) + BColors.DEFAULT
 
 
 class StockRNN(nn.Module):
@@ -39,9 +39,8 @@ class StockRNN(nn.Module):
     def __init__(self, lstm_hidden_size: int, lstm_num_layers: int, ticker: str,
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
                  sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
-                 auto_populate: bool = True,
-                 train_data_prop: float = 0.8, src: str = 'yahoo', lr: float = 1e-4, train_batch_size: int = 30,
-                 test_batch_size: int = 30, num_workers: int = 2, label_length: int = 10):
+                 auto_populate: bool = True, train_data_prop: float = 0.8, src: str = 'yahoo', lr: float = 1e-4,
+                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 10):
         """
         TODO: documentation here
 
@@ -100,10 +99,6 @@ class StockRNN(nn.Module):
         self.loss = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
-        # initialize samplers
-        self.train_sampler = SubsetRandomSampler(np.arange(1, dtype=np.int64))
-        self.test_sampler = SubsetRandomSampler(np.arange(1, dtype=np.int64))
-
         if self.auto_populate:
             self.populate_daily_stock_data()
             self.populate_test_train()
@@ -142,7 +137,7 @@ class StockRNN(nn.Module):
         axs.plot(self.daily_stock_data)
         plt.show()
 
-    def forward(self, x, hx):
+    def forward(self, x: torch.tensor):
         r"""
         TODO: documentation here
 
@@ -152,17 +147,17 @@ class StockRNN(nn.Module):
         :return: lstm_out
         :return: hx
         """
-        # batch_size = x.size(0)
-
-        lstm_out, hx = self.lstm.forward(x, hx)
+        # input x needs to be converted from (batch_size, features, seqence_length) to (sequence_length, batch_size,
+        # features) before being passed through the LSTM
+        # TODO: reshape the input before passing to the lstm
+        lstm_out= self.lstm.forward(x)
         # lstm_out is of shape (sequence_length, batch_size, hidden_size)
-
-        out = lstm_out.contiguous().view(-1, self.hidden_dim)
+        # TODO: reshape the output before returnign
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
 
-        return out, hx
+        return lstm_out
 
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
@@ -218,7 +213,7 @@ class StockRNN(nn.Module):
 
         X_train = train_segments[:, :, :-1]
         y_train = train_segments[:, :, -self.label_length]
-        X_test = test_segments[:, :,  :-1]
+        X_test = test_segments[:, :, :-1]
         y_test = test_segments[:, :, -self.label_length]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
@@ -230,20 +225,34 @@ class StockRNN(nn.Module):
         :return: training DataLoader
         :return: testing DataLoader
         """
-        return [
-            DataLoader(
-                self.train_set,
-                batch_size=self.train_batch_size,
-                sampler=self.train_sampler,
-                num_workers=self.num_workers
-            ),
-            DataLoader(
-                self.test_set,
-                batch_size=self.test_batch_size,
-                sampler=self.test_sampler,
-                num_workers=self.num_workers
-            )
-        ]
+        if self.__togpu_works__ == 1:
+            return [
+                DataLoader(
+                    self.train_set,
+                    batch_size=self.train_batch_size,
+                    num_workers=self.num_workers,
+                    pin_memory=True
+                ),
+                DataLoader(
+                    self.test_set,
+                    batch_size=self.test_batch_size,
+                    num_workers=self.num_workers,
+                    pin_memory=True
+                )
+            ]
+        else:
+            return [
+                DataLoader(
+                    self.train_set,
+                    batch_size=self.train_batch_size,
+                    num_workers=self.num_workers
+                ),
+                DataLoader(
+                    self.test_set,
+                    batch_size=self.test_batch_size,
+                    num_workers=self.num_workers
+                )
+            ]
 
     def populate_loaders(self):
         """
@@ -263,9 +272,7 @@ class StockRNN(nn.Module):
             epoch_start_time = time.time()
             for i, data in enumerate(self.train_loader):
                 inputs, labels = data
-                # inputs = Variable(inputs_)
-                # labels = Variable(labels_)
-                # del inputs_, labels_
+                print("Batch size: ", self.train_loader.batch_size)
 
                 # send inputs and labels to the gpu if possible
                 if self.__togpu_works__ == 1:
@@ -282,23 +289,20 @@ class StockRNN(nn.Module):
                     except AssertionError:
                         print(TO_GPU_FAIL_MSG)
                         model.__togpu__(False)
-                else:  # self.__togpu_works__ == -1
-                    inputs = torch.tensor(inputs)
-                    labels = torch.tensor(labels)
+                # otherwise, ``inputs`` and ``labels`` are already tensors
 
                 # zero out the gradients before each pass
                 self.optimizer.zero_grad()
-                print(inputs.shape)
                 outputs = self.forward(inputs)
-                loss = self.loss(outputs, labels)
-                loss.backward()
-                self.optimizer.step()
+                # loss = self.loss(outputs, labels)
+                # loss.backward()
+                # self.optimizer.step()
 
 
 if __name__ == "__main__":
     model: StockRNN
     model = StockRNN(1, 1, 'IBM')  # TODO: update these parameters
-    model.peek_dataset()
+    # model.peek_dataset()
 
     try:
         model.to(DEVICE)
