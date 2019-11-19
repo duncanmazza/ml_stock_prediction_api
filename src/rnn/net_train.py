@@ -217,9 +217,9 @@ class StockRNN(nn.Module):
         del segmented_data
 
         X_train = train_segments
-        y_train = train_segments[:, :, train_segments.shape[2]-self.label_length]
+        y_train = train_segments[:, :, train_segments.shape[2] - self.label_length]
         X_test = test_segments
-        y_test = test_segments[:, :, test_segments.shape[2]-self.label_length]
+        y_test = test_segments[:, :, test_segments.shape[2] - self.label_length]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
 
@@ -269,12 +269,14 @@ class StockRNN(nn.Module):
         r"""
         TODO: documentation here
         """
-        train_idx = 0
         epoch_num = 0
         training_start_time = time.time()
 
+        if num_epochs <= 0:
+            print(BColors.FAIL + "Cannot complete training with <= 0 specified epochs." + BColors.DEFAULT)
+            raise Exception
+
         while epoch_num < num_epochs:
-            epoch_start_time = time.time()
             for i, data in enumerate(self.train_loader):
                 inputs, labels = data
 
@@ -297,9 +299,18 @@ class StockRNN(nn.Module):
 
                 self.optimizer.zero_grad()
                 outputs = self.forward(inputs)
-                loss = self.loss(outputs[:, :, outputs.shape[2]-self.label_length:], labels)
+                loss = self.loss(outputs[:, :, outputs.shape[2] - self.label_length:], labels)
                 loss.backward()
                 self.optimizer.step()
+            epoch_num += 1
+
+        print("Finished training\n"
+              "......Duration: {}\n"
+              "....Final loss: {}\n".format(
+                round(time.time() - training_start_time),
+                loss.size()
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -318,58 +329,3 @@ if __name__ == "__main__":
         model.__togpu__(False)
 
     model.do_training(10)
-
-# output_size = 1
-# embedding_dim = 400
-# hidden_dim = 512
-# n_layers = 2
-#
-# model = StockRNN(output_size, embedding_dim, hidden_dim, n_layers)
-# model.to(DEVICE)  # send to GPU
-#
-# lr = 0.005
-# criterion = nn.BCELoss()  # binary cross-entropy loss between target and output
-# optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-#
-# epochs = 2
-# counter = 0
-# print_every = 1000
-# clip = 5
-# valid_loss_min = np.Inf
-#
-# model.train()
-# for i in range(epochs):
-#     h = model.init_hidden(batch_size)
-#
-#     for inputs, labels in train_loader:
-#         counter += 1
-#         h = tuple([e.data for e in h])
-#         inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
-#         model.zero_grad()
-#         output, h = model(inputs, h)
-#         loss = criterion(output.squeeze(), labels.float())
-#         loss.backward()
-#         nn.utils.clip_grad_norm_(model.parameters(), clip)
-#         optimizer.step()
-#
-#         if counter % print_every == 0:
-#             val_h = model.init_hidden(batch_size)
-#             val_losses = []
-#             model.eval()
-#             for inp, lab in val_loader:
-#                 val_h = tuple([each.data for each in val_h])
-#                 inp, lab = inp.to(DEVICE), lab.to(DEVICE)
-#                 out, val_h = model(inp, val_h)
-#                 val_loss = criterion(out.squeeze(), lab.float())
-#                 val_losses.append(val_loss.item())
-#
-#             model.train()
-#             print("Epoch: {}/{}...".format(i + 1, epochs),
-#                   "Step: {}...".format(counter),
-#                   "Loss: {:.6f}...".format(loss.item()),
-#                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
-#             if np.mean(val_losses) <= valid_loss_min:
-#                 torch.save(model.state_dict(), './state_dict.pt')
-#                 print('Validation loss decreased ({:.6f} --> {:.6f}).'
-#                       'Saving model ...'.format(valid_loss_min, np.mean(val_losses)))
-#                 valid_loss_min = np.mean(val_losses)
