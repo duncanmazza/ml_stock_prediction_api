@@ -86,14 +86,14 @@ class StockRNN(nn.Module):
         self.label_length = label_length
 
         # initialize objects used during forward pass
-        self.lstm = nn.LSTM(self.sequence_segment_length, self.lstm_hidden_size, self.lstm_num_layers,
-                            dropout=self.drop_prob)
+        self.lstm = nn.LSTM(1, self.lstm_hidden_size, self.lstm_num_layers, dropout=self.drop_prob)
         self.dropout = nn.Dropout(drop_prob)
 
         # initialize attributes with placeholder arrays
         self.daily_stock_data = np.array(0)
         self.train_sample_indices = np.array(0)
         self.test_sample_indices = np.array(0)
+        self.train_loader_len = 0
 
         # initialize optimizer and loss
         self.loss = nn.MSELoss()
@@ -147,19 +147,24 @@ class StockRNN(nn.Module):
         :return: lstm_out
         :return: hx
         """
-        # input x needs to be converted from (batch_size, features, seqence_length) to (sequence_length, batch_size,
-        # features) before being passed through the LSTM; also convert to type double
-        x.permute(2, 0, 1)
-        lstm_out = self.lstm.forward(x)[0]
-        # lstm_out is of shape (sequence_length, batch_size, hidden_size), and needs to be converted back to the same
-        # shape as x was originally: (batch_size, features, sequence_length). if hidden_size != features, then further
-        # processing would need to be done
+        x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
+        # (sequence_length, batch_size, features) before being passed through the LSTM
+        lstm_out = torch.zeros(x.shape)  # will store the output of the LSTM layer
+        output, (h_n, c_n) = self.lstm.forward(x[0, :, :])  # pass in the first value of the sequence and let Pytorch
+        # initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size) where,
+        # for now, the hidden_size = 1 and the sequence length = 1
+        for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
+            # the hidden state to pass to the next forward pass
+            output, (h_n, c_n) = self.lstm.forward(x[x_, :, :], (h_n, c_n))
+            lstm_out[x_, :, :] = output[0, :, :]
+        # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to (
+        # batch_size, features, sequence_length)
         lstm_out.permute(1, 2, 0)
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
 
-        return lstm_out
+        return lstm_out[self.sequence_segment_length - self.label_length:]
 
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
@@ -264,53 +269,86 @@ class StockRNN(nn.Module):
         TODO: documentation here
         """
         [self.train_loader, self.test_loader] = self.return_loaders()
+        self.train_loader_len = len(self.train_loader)
 
-    def do_training(self, num_epochs: int):
+    def do_training(self, num_epochs: int, verbose=False):
         r"""
         TODO: documentation here
         """
+        print("Train loader size:", self.train_loader_len)
         epoch_num = 0
+        pass_num = 0
         training_start_time = time.time()
+        train_loss_list = []
+        train_loss_list_idx = []
+        test_loss_list = []
+        test_loss_list_idx = []
 
         if num_epochs <= 0:
             print(BColors.FAIL + "Cannot complete training with <= 0 specified epochs." + BColors.DEFAULT)
             raise Exception
 
         while epoch_num < num_epochs:
-            for i, data in enumerate(self.train_loader):
-                inputs, labels = data
+            if verbose: print("Epoch num: {} | Progress: ".format(epoch_num))
+            pass_num_this_epoch = 0
+            for i, data in enumerate(self.train_loader, 0):
+                test_inputs, test_labels = data
 
                 # send inputs and labels to the gpu if possible
                 if self.__togpu_works__ == 1:
-                    inputs.to(DEVICE)
-                    labels.to(DEVICE)
-                elif self.__togpu_works__ == 0:
-                    try:
-                        inputs.to(DEVICE)
-                        labels.to(DEVICE)
-                        model.__togpu__(True)
-                    except RuntimeError:
-                        print(TO_GPU_FAIL_MSG)
-                        raise RuntimeError
-                    except AssertionError:
-                        print(TO_GPU_FAIL_MSG)
-                        model.__togpu__(False)
+                    test_inputs.to(DEVICE)
+                    test_labels.to(DEVICE)
                 # otherwise, ``inputs`` and ``labels`` are already tensors
 
                 self.optimizer.zero_grad()
-                outputs = self.forward(inputs)
-                loss = self.loss(outputs[:, :, outputs.shape[2] - self.label_length:], labels)
-                loss.backward()
+                outputs = self.forward(test_inputs)
+                loss_size = self.loss(outputs[:, :, outputs.shape[2] - self.label_length:], test_labels)
+                loss_size.backward()
+                train_loss_list.append(loss_size.data.item())
+                train_loss_list_idx.append(pass_num)
                 self.optimizer.step()
+                pass_num += 1
+                pass_num_this_epoch += 1
+                if verbose:
+                    percent = round(100 * pass_num_this_epoch / self.train_loader_len)
+                    percent_floored_by_10 = (percent // 10)
+                    end = " | train loss size = {}".format(train_loss_list[-1])
+                    if pass_num_this_epoch == self.train_loader_len:
+                        end += "\n"
+                    else:
+                        end += "\r"
+                    print(
+                        "-> {}% [".format(percent) + "-" * (percent_floored_by_10) + " " * (10 - percent_floored_by_10)
+                        + "]", end=end)
+
+            # do a run on the test set at the end of every epoch:
+            test_loss_this_epoch = 0
+            for i, data in enumerate(self.test_loader, 0):
+                test_inputs, test_labels = data
+                # send inputs and labels to the gpu if possible
+                if self.__togpu_works__ == 1:
+                    test_inputs.to(DEVICE)
+                    test_labels.to(DEVICE)
+                # Forward pass
+                test_outputs = self.forward(test_inputs)
+
+                # print("test outputs max = {}, test outputs min = {}".format(torch.max(test_outputs), torch.min(test_outputs)))
+                # print("label outputs max = {}, label outputs min = {}".format(torch.max(labels), torch.min(labels)))
+                test_loss_size = self.loss(test_outputs, test_labels)
+                test_loss_this_epoch += test_loss_size.data.item()
+            test_loss_list.append(test_loss_this_epoch / len(self.test_loader))
+            test_loss_list_idx.append(pass_num)
             epoch_num += 1
 
-        print("Finished training\n"
-              "......Duration: {}\n"
-              "....Final loss: {}\n".format(
-                round(time.time() - training_start_time),
-                loss.size()
-            )
-        )
+        if verbose:
+            print("-----------------\n"
+                  "Finished training\n"
+                  "---------> Duration: {}s\n"
+                  "-> Final train loss: {}\n"
+                  "--> Final test loss: {}".format(round(time.time() - training_start_time, 2), train_loss_list[-1],
+                                                   test_loss_list[-1]
+                                                   )
+                  )
 
 
 if __name__ == "__main__":
