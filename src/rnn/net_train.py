@@ -137,7 +137,7 @@ class StockRNN(nn.Module):
         axs.plot(self.daily_stock_data)
         plt.show()
 
-    def forward(self, x: torch.tensor):
+    def forward(self, x: torch.Tensor):
         r"""
         TODO: documentation here
 
@@ -148,11 +148,13 @@ class StockRNN(nn.Module):
         :return: hx
         """
         # input x needs to be converted from (batch_size, features, seqence_length) to (sequence_length, batch_size,
-        # features) before being passed through the LSTM
-        # TODO: reshape the input before passing to the lstm
-        lstm_out= self.lstm.forward(x)
-        # lstm_out is of shape (sequence_length, batch_size, hidden_size)
-        # TODO: reshape the output before returnign
+        # features) before being passed through the LSTM; also convert to type double
+        x.permute(2, 0, 1)
+        lstm_out = self.lstm.forward(x)[0]
+        # lstm_out is of shape (sequence_length, batch_size, hidden_size), and needs to be converted back to the same
+        # shape as x was originally: (batch_size, features, sequence_length). if hidden_size != features, then further
+        # processing would need to be done
+        lstm_out.permute(1, 2, 0)
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
@@ -180,7 +182,10 @@ class StockRNN(nn.Module):
         try:
             assert len(self.daily_stock_data) > 2 * self.sequence_segment_length
         except AssertionError:
-            print(TO_GPU_FAIL_MSG)
+            print(BColors.FAIL + "The specified segment length for the data to be split up into, {}, would result in "
+                                 "a dataset of only one segment; a minimum of 2 must be created for a train/test split "
+                                 "(although there clearly needs to be more than 2 data points to train the model).")
+            raise AssertionError
 
     def populate_test_train(self, rand_seed: int = -1):
         r"""
@@ -207,14 +212,14 @@ class StockRNN(nn.Module):
         del all_indices
 
         # None indicates an empty dimension for the channels of the data (of which there is 1)
-        train_segments = torch.from_numpy(segmented_data[self.train_sample_indices][:, None, :])
-        test_segments = torch.from_numpy(segmented_data[self.test_sample_indices][:, None, :])
+        train_segments = torch.from_numpy(segmented_data[self.train_sample_indices][:, None, :]).float()
+        test_segments = torch.from_numpy(segmented_data[self.test_sample_indices][:, None, :]).float()
         del segmented_data
 
-        X_train = train_segments[:, :, :-1]
-        y_train = train_segments[:, :, -self.label_length]
-        X_test = test_segments[:, :, :-1]
-        y_test = test_segments[:, :, -self.label_length]
+        X_train = train_segments
+        y_train = train_segments[:, :, train_segments.shape[2]-self.label_length]
+        X_test = test_segments
+        y_test = test_segments[:, :, test_segments.shape[2]-self.label_length]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
 
@@ -231,13 +236,13 @@ class StockRNN(nn.Module):
                     self.train_set,
                     batch_size=self.train_batch_size,
                     num_workers=self.num_workers,
-                    pin_memory=True
+                    pin_memory=True  # speeds up the host-to-device transfer
                 ),
                 DataLoader(
                     self.test_set,
                     batch_size=self.test_batch_size,
                     num_workers=self.num_workers,
-                    pin_memory=True
+                    pin_memory=True  # speeds up the host-to-device transfer
                 )
             ]
         else:
@@ -272,7 +277,6 @@ class StockRNN(nn.Module):
             epoch_start_time = time.time()
             for i, data in enumerate(self.train_loader):
                 inputs, labels = data
-                print("Batch size: ", self.train_loader.batch_size)
 
                 # send inputs and labels to the gpu if possible
                 if self.__togpu_works__ == 1:
@@ -291,12 +295,11 @@ class StockRNN(nn.Module):
                         model.__togpu__(False)
                 # otherwise, ``inputs`` and ``labels`` are already tensors
 
-                # zero out the gradients before each pass
                 self.optimizer.zero_grad()
                 outputs = self.forward(inputs)
-                # loss = self.loss(outputs, labels)
-                # loss.backward()
-                # self.optimizer.step()
+                loss = self.loss(outputs[:, :, outputs.shape[2]-self.label_length:], labels)
+                loss.backward()
+                self.optimizer.step()
 
 
 if __name__ == "__main__":
