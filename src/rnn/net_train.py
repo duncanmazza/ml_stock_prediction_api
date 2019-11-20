@@ -222,9 +222,9 @@ class StockRNN(nn.Module):
         del segmented_data
 
         X_train = train_segments
-        y_train = train_segments[:, :, train_segments.shape[2] - self.label_length]
+        y_train = train_segments[:, :, train_segments.shape[2] - self.label_length:]
         X_test = test_segments
-        y_test = test_segments[:, :, test_segments.shape[2] - self.label_length]
+        y_test = test_segments[:, :, test_segments.shape[2] - self.label_length:]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
 
@@ -271,7 +271,7 @@ class StockRNN(nn.Module):
         [self.train_loader, self.test_loader] = self.return_loaders()
         self.train_loader_len = len(self.train_loader)
 
-    def do_training(self, num_epochs: int, verbose=False):
+    def do_training(self, num_epochs: int, verbose=True):
         r"""
         TODO: documentation here
         """
@@ -312,7 +312,7 @@ class StockRNN(nn.Module):
                 if verbose:
                     percent = round(100 * pass_num_this_epoch / self.train_loader_len)
                     percent_floored_by_10 = (percent // 10)
-                    end = " | train loss size = {}".format(train_loss_list[-1])
+                    end = " train loss size = {}".format(train_loss_list[-1])
                     if pass_num_this_epoch == self.train_loader_len:
                         end += "\n"
                     else:
@@ -346,9 +346,7 @@ class StockRNN(nn.Module):
                   "---------> Duration: {}s\n"
                   "-> Final train loss: {}\n"
                   "--> Final test loss: {}".format(round(time.time() - training_start_time, 2), train_loss_list[-1],
-                                                   test_loss_list[-1]
-                                                   )
-                  )
+                  test_loss_list[-1]))
 
 
 if __name__ == "__main__":
