@@ -24,7 +24,7 @@ import time
 
 DEVICE = "cuda"  # selects the gpu to be used
 TO_GPU_FAIL_MSG = BColors.FAIL + "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
-                                 "that you have enabled the GPU your settings".format(DEVICE) + BColors.DEFAULT
+                                 "that you have enabled the GPU your settings".format(DEVICE) + BColors.WHITE
 
 
 class StockRNN(nn.Module):
@@ -147,24 +147,24 @@ class StockRNN(nn.Module):
         :return: lstm_out
         :return: hx
         """
-        x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
+        x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
         # (sequence_length, batch_size, features) before being passed through the LSTM
         lstm_out = torch.zeros(x.shape)  # will store the output of the LSTM layer
-        output, (h_n, c_n) = self.lstm.forward(x[0, :, :])  # pass in the first value of the sequence and let Pytorch
+        output, (h_n, c_n) = self.lstm.forward(x[0, None, :, :])  # pass in the first value of the sequence and let Pytorch
         # initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size) where,
         # for now, the hidden_size = 1 and the sequence length = 1
         for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
             # the hidden state to pass to the next forward pass
-            output, (h_n, c_n) = self.lstm.forward(x[x_, :, :], (h_n, c_n))
+            output, (h_n, c_n) = self.lstm.forward(x[x_, None, :, :], (h_n, c_n))
             lstm_out[x_, :, :] = output[0, :, :]
         # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to (
         # batch_size, features, sequence_length)
-        lstm_out.permute(1, 2, 0)
+        lstm_out = lstm_out.permute(1, 2, 0)
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
 
-        return lstm_out[self.sequence_segment_length - self.label_length:]
+        return lstm_out[self.sequence_segment_length - self.label_length:, :, :]
 
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
@@ -189,7 +189,8 @@ class StockRNN(nn.Module):
         except AssertionError:
             print(BColors.FAIL + "The specified segment length for the data to be split up into, {}, would result in "
                                  "a dataset of only one segment; a minimum of 2 must be created for a train/test split "
-                                 "(although there clearly needs to be more than 2 data points to train the model).")
+                                 "(although there clearly needs to be more than 2 data points to train the model)." +
+                  BColors.WHITE)
             raise AssertionError
 
     def populate_test_train(self, rand_seed: int = -1):
@@ -285,7 +286,7 @@ class StockRNN(nn.Module):
         test_loss_list_idx = []
 
         if num_epochs <= 0:
-            print(BColors.FAIL + "Cannot complete training with <= 0 specified epochs." + BColors.DEFAULT)
+            print(BColors.FAIL + "Cannot complete training with <= 0 specified epochs." + BColors.WHITE)
             raise Exception
 
         while epoch_num < num_epochs:
