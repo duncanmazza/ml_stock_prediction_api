@@ -40,7 +40,7 @@ class StockRNN(nn.Module):
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
                  sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, src: str = 'yahoo', lr: float = 1e-4,
-                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 10):
+                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 5):
         """
         TODO: documentation here
 
@@ -163,8 +163,7 @@ class StockRNN(nn.Module):
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
-
-        return lstm_out[self.sequence_segment_length - self.label_length:, :, :]
+        return lstm_out[:, :, self.sequence_segment_length - self.label_length:]
 
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
