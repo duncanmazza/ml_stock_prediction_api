@@ -117,6 +117,24 @@ def numpy_array_of_company_daily_stock_close_yahoo(ticker: str, start_date: date
     """
     return np.array(return_stock_data(ticker, start_date, end_date, src='yahoo')['Close'])
 
+def numpy_array_of_company_daily_stock_percent_change(src: str, ticker: str, start_date: datetime,
+                                                      end_date: datetime) -> np.ndarray:
+    """
+    TODO: documentation here
+
+    :param src:
+    :param ticker:
+    :param start_date:
+    :param end_date:
+    :return:
+    """
+    if src.__contains__('av-'):
+        daily_stock_data = numpy_array_of_company_daily_stock_close_av(ticker, start_date, end_date)
+    else:
+        daily_stock_data = numpy_array_of_company_daily_stock_close_yahoo(ticker, start_date, end_date)
+    start_array: np.ndarray = daily_stock_data[:-1]
+    end_array: np.ndarray = daily_stock_data[1:]
+    return (end_array - start_array) / start_array
+
 if __name__ == "__main__":
     stock_data = numpy_array_of_company_daily_stock_close_yahoo('IBM', datetime(2017, 2, 9), datetime(2017, 2, 11))
-    print('here')

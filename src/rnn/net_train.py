@@ -14,8 +14,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 import numpy as np
 from datetime import datetime
-from src.get_data.pandas_stock_data import numpy_array_of_company_daily_stock_close_av, \
-    numpy_array_of_company_daily_stock_close_yahoo
+from src.get_data.pandas_stock_data import numpy_array_of_company_daily_stock_percent_change
 import matplotlib.pyplot as plt
 import time
 
@@ -38,7 +37,7 @@ class StockRNN(nn.Module):
                  sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, src: str = 'yahoo', lr: float = 1e-4,
                  train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 5):
-        """
+        r"""
         TODO: documentation here
 
         :param lstm_hidden_size:
@@ -102,7 +101,7 @@ class StockRNN(nn.Module):
             self.populate_loaders()
 
     def __togpu__(self, succ):
-        """
+        r"""
         Sets the value of :attr:`__togpu_works__`, which is used in such a way that expensive error catching isn't run
         every epoch of training.
 
@@ -114,7 +113,7 @@ class StockRNN(nn.Module):
             self.__togpu_works__ = -1
 
     def return_loss_and_optimizer(self):
-        """
+        r"""
         TODO: documentation here
 
         :return: :attr:`optimizer`
@@ -123,7 +122,7 @@ class StockRNN(nn.Module):
         return self.optimizer, self.loss
 
     def peek_dataset(self, figsize: (int, int) = (10, 5)):
-        """
+        r"""
         Creates a simple line plot of the stock data
 
         TODO: add title and axis labels
@@ -134,33 +133,6 @@ class StockRNN(nn.Module):
         axs.plot(self.daily_stock_data)
         plt.show()
 
-    def forward(self, x: torch.Tensor):
-        """
-        TODO: documentation here
-
-        :param x:
-        :return:
-        """
-        x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
-        # (sequence_length, batch_size, features) before being passed through the LSTM
-        lstm_out = torch.zeros(x.shape)  # will store the output of the LSTM layer
-        output, (h_n, c_n) = self.lstm.forward(
-            x[0, None, :, :])  # pass in the first value of the sequence and let Pytorch
-        # initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size) where,
-        # for now, the hidden_size = 1 and the sequence length = 1
-        for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
-            # the hidden state to pass to the next forward pass
-            output, (h_n, c_n) = self.lstm.forward(x[x_, None, :, :], (h_n, c_n))
-            lstm_out[x_, :, :] = output[0, :, :]
-            # TODO: figure out why the outputs are filled with just 0's
-        # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to (
-        # batch_size, features, sequence_length)
-        lstm_out = lstm_out.permute(1, 2, 0)
-
-        # run dropout on the output of the lstm
-        # out = self.dropout(lstm_out)
-        return lstm_out
-
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
         Populates ``self.daily_stock_data`` using relevant class attributes
@@ -168,12 +140,8 @@ class StockRNN(nn.Module):
         :param truncate: boolean for whether the stock data array is truncated to a length such that
             ``len(self.daily_stock_data) % self.sequence_length = 0``.
         """
-        if self.src.__contains__('av-'):
-            self.daily_stock_data = numpy_array_of_company_daily_stock_close_av(
-                self.ticker, self.start_date, self.end_date)
-        else:
-            self.daily_stock_data = numpy_array_of_company_daily_stock_close_yahoo(self.ticker, self.start_date,
-                                                                                   self.end_date)
+        self.daily_stock_data = numpy_array_of_company_daily_stock_percent_change(self.src, self.ticker,
+                                                                                  self.start_date, self.end_date)
         if truncate:
             mod = len(self.daily_stock_data) % self.sequence_segment_length
             if mod != 0:
@@ -226,7 +194,7 @@ class StockRNN(nn.Module):
         self.test_set = TensorDataset(X_test, y_test)
 
     def return_loaders(self) -> [DataLoader, DataLoader]:
-        """
+        r"""
         TODO: documentation here
 
         :return: training DataLoader
@@ -262,11 +230,40 @@ class StockRNN(nn.Module):
             ]
 
     def populate_loaders(self):
-        """
+        r"""
         TODO: documentation here
         """
         self.train_loader, self.test_loader = self.return_loaders()
         self.train_loader_len = len(self.train_loader)
+
+    def forward(self, x: torch.Tensor):
+        r"""
+        TODO: documentation here
+
+        :param x:
+        :return:
+        """
+
+        x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
+        # (sequence_length, batch_size, features) before being passed through the LSTM
+        # TODO: figure out why the data in each batch is exactly the same maybe...?
+        lstm_out = torch.zeros((x.shape[0]), (x.shape[1]), (x.shape[2] * self.lstm_hidden_size))  # will store the
+        # output of the LSTM layer
+        output, (h_n, c_n) = self.lstm.forward(x[0, None, :, :])  # pass in the first value of the sequence and let
+        lstm_out[0, :, :] = output[0, :, :]
+        # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size)
+        # where, for now, the hidden_size = 1 and the sequence length = 1
+        for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
+            # the hidden state to pass to the next forward pass
+            output, (h_n, c_n) = self.lstm.forward(x[x_, None, :, :], (h_n, c_n))
+            lstm_out[x_, :, :] = output[0, :, :]
+        # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to
+        # (batch_size, features, sequence_length)
+        lstm_out = lstm_out.permute(1, 2, 0)
+
+        # run dropout on the output of the lstm
+        # out = self.dropout(lstm_out)
+        return lstm_out
 
     def do_training(self, num_epochs: int, verbose=True):
         r"""
@@ -349,7 +346,7 @@ class StockRNN(nn.Module):
 if __name__ == "__main__":
     model: StockRNN
     model = StockRNN(1, 1, 'IBM')  # TODO: update these parameters
-    # model.peek_dataset()
+    model.peek_dataset()
 
     try:
         model.to(DEVICE)
