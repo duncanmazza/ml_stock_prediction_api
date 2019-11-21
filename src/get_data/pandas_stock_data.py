@@ -61,17 +61,17 @@ def return_stock_data(ticker: str, start_date: datetime, end_date: datetime, src
         else:  # src == 'yahoo'
             f = web.get_data_yahoo(ticker, start_date, end_date)
     except KeyError:
-        print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(ticker) + BColors.DEFAULT)
+        print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(ticker) + BColors.WHITE)
         raise Exception
     except requests.exceptions.SSLError:
         print(BColors.FAIL + "A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
                              "internet connection; try again after verifying that you have a successful internet "
-                             "connection." + BColors.DEFAULT)
+                             "connection." + BColors.WHITE)
         raise requests.exceptions.SSLError
     except requests.exceptions.ConnectionError:
         print(BColors.FAIL + "A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a lack of "
                              "internet connection; try again after verifying that you have a successful internet "
-                             "connection." + BColors.DEFAULT)
+                             "connection." + BColors.WHITE)
         raise requests.exceptions.ConnectionError
     return f
 

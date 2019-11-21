@@ -44,7 +44,6 @@ class StockRNN(nn.Module):
         """
         TODO: documentation here
 
-        :param lstm_input_size:
         :param lstm_hidden_size:
         :param lstm_num_layers:
         :param ticker:
@@ -60,6 +59,7 @@ class StockRNN(nn.Module):
         :param train_batch_size:
         :param test_batch_size:
         :param num_workers:
+        :param label_length:
         """
         super(StockRNN, self).__init__()
 
@@ -138,19 +138,17 @@ class StockRNN(nn.Module):
         plt.show()
 
     def forward(self, x: torch.Tensor):
-        r"""
+        """
         TODO: documentation here
 
         :param x:
-        :param hx:
-
-        :return: lstm_out
-        :return: hx
+        :return:
         """
         x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
         # (sequence_length, batch_size, features) before being passed through the LSTM
         lstm_out = torch.zeros(x.shape)  # will store the output of the LSTM layer
-        output, (h_n, c_n) = self.lstm.forward(x[0, None, :, :])  # pass in the first value of the sequence and let Pytorch
+        output, (h_n, c_n) = self.lstm.forward(
+            x[0, None, :, :])  # pass in the first value of the sequence and let Pytorch
         # initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size) where,
         # for now, the hidden_size = 1 and the sequence length = 1
         for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
@@ -163,7 +161,7 @@ class StockRNN(nn.Module):
 
         # run dropout on the output of the lstm
         # out = self.dropout(lstm_out)
-        return lstm_out[:, :, self.sequence_segment_length - self.label_length:]
+        return lstm_out
 
     def populate_daily_stock_data(self, truncate: bool = True):
         r"""
@@ -173,15 +171,14 @@ class StockRNN(nn.Module):
             ``len(self.daily_stock_data) % self.sequence_length = 0``.
         """
         if self.src.__contains__('av-'):
-            self.daily_stock_data = numpy_array_of_company_daily_stock_close_av(self.ticker, self.start_date,
-                                                                                self.end_date)
-        else:  # self.src == 'yahoo':
+            self.daily_stock_data = numpy_array_of_company_daily_stock_close_av(
+                self.ticker, self.start_date, self.end_date)
+        else:
             self.daily_stock_data = numpy_array_of_company_daily_stock_close_yahoo(self.ticker, self.start_date,
                                                                                    self.end_date)
         if truncate:
             mod = len(self.daily_stock_data) % self.sequence_segment_length
-            if mod != 0:
-                self.daily_stock_data = self.daily_stock_data[:-mod]
+            if mod != 0: self.daily_stock_data = self.daily_stock_data[:-mod]
 
         try:
             assert len(self.daily_stock_data) > 2 * self.sequence_segment_length
@@ -201,15 +198,14 @@ class StockRNN(nn.Module):
         :param rand_seed: value to seed the random number generator; if -1 (or any value < 0), then do not
             seed the random number generator.
         """
-        num_segments = len(
-            self.daily_stock_data) // self.sequence_segment_length  # floor divide is used to return an integer
-        # (should be no rounding)
+        num_segments = len(self.daily_stock_data) // self.sequence_segment_length  # floor divide is used to return an
+        # integer (should be no rounding)
 
         segmented_data = self.daily_stock_data.reshape(num_segments, self.sequence_segment_length)
         num_train_segments = round(num_segments * self.train_data_prop)
 
-        if rand_seed >= 0:
-            np.random.seed(rand_seed)
+        if rand_seed >= 0: np.random.seed(rand_seed)
+
         all_indices = np.array(range(num_segments), dtype=np.int64)
         np.random.shuffle(all_indices)
         self.train_sample_indices = all_indices[0:num_train_segments]
@@ -221,6 +217,7 @@ class StockRNN(nn.Module):
         test_segments = torch.from_numpy(segmented_data[self.test_sample_indices][:, None, :]).float()
         del segmented_data
 
+        # TODO: add checks so that params produce valid splicing of array data
         X_train = train_segments
         y_train = train_segments[:, :, train_segments.shape[2] - self.label_length:]
         X_test = test_segments
@@ -268,7 +265,7 @@ class StockRNN(nn.Module):
         """
         TODO: documentation here
         """
-        [self.train_loader, self.test_loader] = self.return_loaders()
+        self.train_loader, self.test_loader = self.return_loaders()
         self.train_loader_len = len(self.train_loader)
 
     def do_training(self, num_epochs: int, verbose=True):
@@ -292,17 +289,17 @@ class StockRNN(nn.Module):
             if verbose: print("Epoch num: {} | Progress: ".format(epoch_num))
             pass_num_this_epoch = 0
             for i, data in enumerate(self.train_loader, 0):
-                test_inputs, test_labels = data
+                train_inputs, train_labels = data
 
                 # send inputs and labels to the gpu if possible
                 if self.__togpu_works__ == 1:
-                    test_inputs.to(DEVICE)
-                    test_labels.to(DEVICE)
+                    train_inputs.to(DEVICE)
+                    train_labels.to(DEVICE)
                 # otherwise, ``inputs`` and ``labels`` are already tensors
 
                 self.optimizer.zero_grad()
-                outputs = self.forward(test_inputs)
-                loss_size = self.loss(outputs[:, :, outputs.shape[2] - self.label_length:], test_labels)
+                output = self.forward(train_inputs)
+                loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
                 loss_size.backward()
                 train_loss_list.append(loss_size.data.item())
                 train_loss_list_idx.append(pass_num)
@@ -330,11 +327,9 @@ class StockRNN(nn.Module):
                     test_inputs.to(DEVICE)
                     test_labels.to(DEVICE)
                 # Forward pass
-                test_outputs = self.forward(test_inputs)
+                output = self.forward(test_inputs)
 
-                # print("test outputs max = {}, test outputs min = {}".format(torch.max(test_outputs), torch.min(test_outputs)))
-                # print("label outputs max = {}, label outputs min = {}".format(torch.max(labels), torch.min(labels)))
-                test_loss_size = self.loss(test_outputs, test_labels)
+                test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
                 test_loss_this_epoch += test_loss_size.data.item()
             test_loss_list.append(test_loss_this_epoch / len(self.test_loader))
             test_loss_list_idx.append(pass_num)
@@ -345,8 +340,9 @@ class StockRNN(nn.Module):
                   "Finished training\n"
                   "---------> Duration: {}s\n"
                   "-> Final train loss: {}\n"
-                  "--> Final test loss: {}".format(round(time.time() - training_start_time, 2), train_loss_list[-1],
-                  test_loss_list[-1]))
+                  "--> Final test loss: {}".format(round(time.time() - training_start_time, 2),
+                                                   round(train_loss_list[-1], 2),
+                                                   round(test_loss_list[-1]), 2))
 
 
 if __name__ == "__main__":

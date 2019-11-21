@@ -10,4 +10,4 @@ class BColors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-    DEFAULT = "\033[39m"
+    WHITE = "\033[39m"
