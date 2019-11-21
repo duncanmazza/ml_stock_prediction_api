@@ -68,7 +68,7 @@ class StockRNN(nn.Module):
         self.lstm_num_layers = lstm_num_layers
         self.drop_prob = drop_prob
         self.device = device
-        self.ticker = ticker
+        self.ticker = ticker  # TODO: add support for comparrison with multiple companies (change feature size from 1)
         self.src = src
         self.start_date = start_date
         self.end_date = end_date
@@ -84,12 +84,14 @@ class StockRNN(nn.Module):
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(1, self.lstm_hidden_size, self.lstm_num_layers, dropout=self.drop_prob)
         self.dropout = nn.Dropout(drop_prob)
+        self.fc_after_lstm = nn.Linear(self.lstm_hidden_size, 1)
 
         # initialize attributes with placeholder arrays
         self.daily_stock_data = np.array(0)
         self.train_sample_indices = np.array(0)
         self.test_sample_indices = np.array(0)
         self.train_loader_len = 0
+        self.test_loader_len = 0
 
         # initialize optimizer and loss
         self.loss = nn.MSELoss()
@@ -235,6 +237,7 @@ class StockRNN(nn.Module):
         """
         self.train_loader, self.test_loader = self.return_loaders()
         self.train_loader_len = len(self.train_loader)
+        self.test_loader_len = len(self.test_loader)
 
     def forward(self, x: torch.Tensor):
         r"""
@@ -243,20 +246,20 @@ class StockRNN(nn.Module):
         :param x:
         :return:
         """
-
         x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
         # (sequence_length, batch_size, features) before being passed through the LSTM
         # TODO: figure out why the data in each batch is exactly the same maybe...?
-        lstm_out = torch.zeros((x.shape[0]), (x.shape[1]), (x.shape[2] * self.lstm_hidden_size))  # will store the
-        # output of the LSTM layer
+        lstm_out = torch.zeros((x.shape[0]), (x.shape[1]), 1)  # will store the output of the LSTM layer
         output, (h_n, c_n) = self.lstm.forward(x[0, None, :, :])  # pass in the first value of the sequence and let
-        lstm_out[0, :, :] = output[0, :, :]
+        fc_output = self.fc_after_lstm.forward(output)  # reduces the hidden_size dimension to 1
+        lstm_out[0, :, :] = fc_output[0, :, :]
         # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size)
         # where, for now, the hidden_size = 1 and the sequence length = 1
         for x_ in range(1, x.shape[0]):  # loop over the rest of the sequence; pass in a value one at a time and save
             # the hidden state to pass to the next forward pass
             output, (h_n, c_n) = self.lstm.forward(x[x_, None, :, :], (h_n, c_n))
-            lstm_out[x_, :, :] = output[0, :, :]
+            fc_output = self.fc_after_lstm.forward(output)
+            lstm_out[x_, :, :] = fc_output[0, :, :]
         # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to
         # (batch_size, features, sequence_length)
         lstm_out = lstm_out.permute(1, 2, 0)
@@ -288,7 +291,6 @@ class StockRNN(nn.Module):
             pass_num_this_epoch = 0
             for i, data in enumerate(self.train_loader, 0):
                 train_inputs, train_labels = data
-
                 # send inputs and labels to the gpu if possible
                 if self.__togpu_works__ == 1:
                     train_inputs.to(DEVICE)
@@ -297,9 +299,9 @@ class StockRNN(nn.Module):
 
                 self.optimizer.zero_grad()
                 output = self.forward(train_inputs)
-                loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
-                loss_size.backward()
-                train_loss_list.append(loss_size.data.item())
+                train_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
+                train_loss_size.backward()
+                train_loss_list.append(train_loss_size.data.item())
                 train_loss_list_idx.append(pass_num)
                 self.optimizer.step()
                 pass_num += 1
@@ -320,32 +322,32 @@ class StockRNN(nn.Module):
             test_loss_this_epoch = 0
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
-                # send inputs and labels to the gpu if possible
-                if self.__togpu_works__ == 1:
+                if self.__togpu_works__ == 1:  # send inputs and labels to the gpu if possible
                     test_inputs.to(DEVICE)
                     test_labels.to(DEVICE)
-                # Forward pass
                 output = self.forward(test_inputs)
-
                 test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
                 test_loss_this_epoch += test_loss_size.data.item()
             test_loss_list.append(test_loss_this_epoch / len(self.test_loader))
             test_loss_list_idx.append(pass_num)
             epoch_num += 1
+            if verbose:
+                print("test loss size = {}".format(test_loss_list[-1]))
 
         if verbose:
             print("-----------------\n"
                   "Finished training\n"
-                  "---------> Duration: {}s\n"
-                  "-> Final train loss: {}\n"
-                  "--> Final test loss: {}".format(round(time.time() - training_start_time, 2),
+                  " >         Duration: {}s\n"
+                  " > Final train loss: {}\n"
+                  " >  Final test loss: {}".format(round(time.time() - training_start_time, 4),
                                                    round(train_loss_list[-1], 2),
                                                    round(test_loss_list[-1]), 2))
 
 
+
 if __name__ == "__main__":
     model: StockRNN
-    model = StockRNN(1, 1, 'IBM')  # TODO: update these parameters
+    model = StockRNN(5, 1, 'IBM')  # TODO: update these parameters
     model.peek_dataset()
 
     try:
