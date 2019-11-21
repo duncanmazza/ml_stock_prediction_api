@@ -8,7 +8,6 @@ import pandas_datareader.data as web
 from pandas import DataFrame
 from tests.BColors import BColors
 import os
-from datetime import datetime
 import numpy as np
 import requests
 

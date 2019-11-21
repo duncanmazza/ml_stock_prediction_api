@@ -1,7 +1,6 @@
 import pytest
 from src.rnn.StockRNN import StockRNN
 import numpy as np
-import torch
 from datetime import datetime
 
 
