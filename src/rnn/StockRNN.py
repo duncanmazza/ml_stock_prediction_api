@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 import numpy as np
 from datetime import datetime
-from src.get_data.pandas_stock_data import numpy_array_of_company_daily_stock_percent_change
+from src.get_data.pandas_stock_data import Company
 import matplotlib.pyplot as plt
 import time
 
@@ -32,10 +32,10 @@ class StockRNN(nn.Module):
     train_loader: DataLoader
     test_loader: DataLoader
 
-    def __init__(self, lstm_hidden_size: int, lstm_num_layers: int, ticker: str,
+    def __init__(self, ticker: str, lstm_hidden_size: int, lstm_num_layers: int, to_compare: [str, ] = None,
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
                  sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
-                 auto_populate: bool = True, train_data_prop: float = 0.8, src: str = 'yahoo', lr: float = 1e-4,
+                 auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
                  train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 5):
         r"""
         TODO: documentation here
@@ -43,6 +43,7 @@ class StockRNN(nn.Module):
         :param lstm_hidden_size:
         :param lstm_num_layers:
         :param ticker:
+        :param to_compare:
         :param start_date:
         :param end_date:
         :param sequence_segment_length:
@@ -50,7 +51,6 @@ class StockRNN(nn.Module):
         :param device:
         :param auto_populate:
         :param train_data_prop:
-        :param src:
         :param lr:
         :param train_batch_size:
         :param test_batch_size:
@@ -69,7 +69,6 @@ class StockRNN(nn.Module):
         self.drop_prob = drop_prob
         self.device = device
         self.ticker = ticker  # TODO: add support for comparrison with multiple companies (change feature size from 1)
-        self.src = src
         self.start_date = start_date
         self.end_date = end_date
         self.sequence_segment_length = sequence_segment_length
@@ -80,6 +79,15 @@ class StockRNN(nn.Module):
         self.test_batch_size = test_batch_size
         self.num_workers = num_workers
         self.label_length = label_length
+        self.to_compare = []
+
+        # company of interest
+        self.coi = Company(self.ticker, self)
+
+        # TODO: utilize self.to_compare (not currently utilized)
+        if to_compare is not None:
+            for company in to_compare:
+                self.to_compare.append(Company(company, self))
 
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(1, self.lstm_hidden_size, self.lstm_num_layers, dropout=self.drop_prob)
@@ -102,14 +110,14 @@ class StockRNN(nn.Module):
             self.populate_test_train()
             self.populate_loaders()
 
-    def __togpu__(self, succ):
+    def __togpu__(self, successful):
         r"""
         Sets the value of :attr:`__togpu_works__`, which is used in such a way that expensive error catching isn't run
         every epoch of training.
 
-        :param succ: boolean for whether ``.to(gpu)`` was called successfully
+        :param successful: boolean for whether ``.to(gpu)`` was called successfully
         """
-        if succ:
+        if successful:
             self.__togpu_works__ = 1
         else:
             self.__togpu_works__ = -1
@@ -142,20 +150,20 @@ class StockRNN(nn.Module):
         :param truncate: boolean for whether the stock data array is truncated to a length such that
             ``len(self.daily_stock_data) % self.sequence_length = 0``.
         """
-        self.daily_stock_data = numpy_array_of_company_daily_stock_percent_change(self.src, self.ticker,
-                                                                                  self.start_date, self.end_date)
+        self.daily_stock_data = self.coi.return_numpy_array_of_company_daily_stock_percent_change()
         if truncate:
             mod = len(self.daily_stock_data) % self.sequence_segment_length
             if mod != 0:
                 self.daily_stock_data = self.daily_stock_data[:-mod]
 
         try:
-            assert len(self.daily_stock_data) > 2 * self.sequence_segment_length
+            assert len(self.daily_stock_data) >= 2 * self.sequence_segment_length
         except AssertionError:
             print(BColors.FAIL + "The specified segment length for the data to be split up into, {}, would result in "
-                                 "a dataset of only one segment; a minimum of 2 must be created for a train/test split "
-                                 "(although there clearly needs to be more than 2 data points to train the model)." +
-                  BColors.WHITE)
+                                 "a dataset of only one segment because the self.daily_stock_data array is of length {}"
+                                 "; a minimum of 2 must be created for a train/test split (although there clearly needs"
+                                 " to be more than 2 data points to train the model).".format(
+                self.sequence_segment_length, len(self.daily_stock_data)) + BColors.WHITE)
             raise AssertionError
 
     def populate_test_train(self, rand_seed: int = -1):
@@ -172,6 +180,10 @@ class StockRNN(nn.Module):
 
         segmented_data = self.daily_stock_data.reshape(num_segments, self.sequence_segment_length)
         num_train_segments = round(num_segments * self.train_data_prop)
+        if num_segments == num_train_segments:
+            # If true, this means that there would be no data for testing (because the train/test ratio is very high
+            # and/or there is too little data given self.sequence_segment_length
+            num_train_segments -= 1
 
         if rand_seed >= 0:
             np.random.seed(rand_seed)
@@ -340,14 +352,13 @@ class StockRNN(nn.Module):
                   " >         Duration: {}s\n"
                   " > Final train loss: {}\n"
                   " >  Final test loss: {}".format(round(time.time() - training_start_time, 4),
-                                                   round(train_loss_list[-1], 2),
-                                                   round(test_loss_list[-1]), 2))
-
+                                                   round(train_loss_list[-1], 4),
+                                                   round(test_loss_list[-1], 4)))
 
 
 if __name__ == "__main__":
     model: StockRNN
-    model = StockRNN(5, 1, 'IBM')  # TODO: update these parameters
+    model = StockRNN('IBM', 5, 1)
     model.peek_dataset()
 
     try:
