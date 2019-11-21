@@ -6,15 +6,12 @@ TODO: remove the above 'adapted from...' note when the code becomes sufficiently
 @author: Duncan Mazza
 """
 
-from warnings import warn
 from torch import Tensor
 from tests.BColors import BColors
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import TensorDataset
-from torch.autograd import Variable
 import numpy as np
 from datetime import datetime
 from src.get_data.pandas_stock_data import numpy_array_of_company_daily_stock_close_av, \
@@ -155,6 +152,7 @@ class StockRNN(nn.Module):
             # the hidden state to pass to the next forward pass
             output, (h_n, c_n) = self.lstm.forward(x[x_, None, :, :], (h_n, c_n))
             lstm_out[x_, :, :] = output[0, :, :]
+            # TODO: figure out why the outputs are filled with just 0's
         # lstm_output is now of shape(sequence_length, batch_size, features * hidden_size); convert back to (
         # batch_size, features, sequence_length)
         lstm_out = lstm_out.permute(1, 2, 0)
@@ -178,7 +176,8 @@ class StockRNN(nn.Module):
                                                                                    self.end_date)
         if truncate:
             mod = len(self.daily_stock_data) % self.sequence_segment_length
-            if mod != 0: self.daily_stock_data = self.daily_stock_data[:-mod]
+            if mod != 0:
+                self.daily_stock_data = self.daily_stock_data[:-mod]
 
         try:
             assert len(self.daily_stock_data) > 2 * self.sequence_segment_length
@@ -204,7 +203,8 @@ class StockRNN(nn.Module):
         segmented_data = self.daily_stock_data.reshape(num_segments, self.sequence_segment_length)
         num_train_segments = round(num_segments * self.train_data_prop)
 
-        if rand_seed >= 0: np.random.seed(rand_seed)
+        if rand_seed >= 0:
+            np.random.seed(rand_seed)
 
         all_indices = np.array(range(num_segments), dtype=np.int64)
         np.random.shuffle(all_indices)
@@ -218,10 +218,10 @@ class StockRNN(nn.Module):
         del segmented_data
 
         # TODO: add checks so that params produce valid splicing of array data
-        X_train = train_segments
-        y_train = train_segments[:, :, train_segments.shape[2] - self.label_length:]
-        X_test = test_segments
-        y_test = test_segments[:, :, test_segments.shape[2] - self.label_length:]
+        X_train: Tensor = train_segments
+        y_train: Tensor = train_segments[:, :, train_segments.shape[2] - self.label_length:]
+        X_test: Tensor = test_segments
+        y_test: Tensor = test_segments[:, :, test_segments.shape[2] - self.label_length:]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
 
@@ -286,7 +286,8 @@ class StockRNN(nn.Module):
             raise Exception
 
         while epoch_num < num_epochs:
-            if verbose: print("Epoch num: {} | Progress: ".format(epoch_num))
+            if verbose:
+                print("Epoch num: {} | Progress: ".format(epoch_num))
             pass_num_this_epoch = 0
             for i, data in enumerate(self.train_loader, 0):
                 train_inputs, train_labels = data
@@ -308,14 +309,14 @@ class StockRNN(nn.Module):
                 pass_num_this_epoch += 1
                 if verbose:
                     percent = round(100 * pass_num_this_epoch / self.train_loader_len)
-                    percent_floored_by_10 = (percent // 10)
+                    percent_floored_by_10: int = (percent // 10)
                     end = " train loss size = {}".format(train_loss_list[-1])
                     if pass_num_this_epoch == self.train_loader_len:
                         end += "\n"
                     else:
                         end += "\r"
                     print(
-                        "-> {}% [".format(percent) + "-" * (percent_floored_by_10) + " " * (10 - percent_floored_by_10)
+                        "-> {}% [".format(percent) + "-" * percent_floored_by_10 + " " * (10 - percent_floored_by_10)
                         + "]", end=end)
 
             # do a run on the test set at the end of every epoch:
