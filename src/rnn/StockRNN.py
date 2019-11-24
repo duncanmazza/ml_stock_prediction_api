@@ -1,7 +1,5 @@
 """
 Code to train the RNN
-(note: adapted from https://blog.floydhub.com/long-short-term-memory-from-zero-to-hero-with-pytorch/)
-TODO: remove the above 'adapted from...' note when the code becomes sufficiently different
 
 @author: Duncan Mazza
 """
@@ -16,6 +14,7 @@ import numpy as np
 from datetime import datetime
 from src.get_data.pandas_stock_data import Company
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 import time
 
 DEVICE = "cuda"  # selects the gpu to be used
@@ -68,7 +67,7 @@ class StockRNN(nn.Module):
         self.lstm_num_layers = lstm_num_layers
         self.drop_prob = drop_prob
         self.device = device
-        self.ticker = ticker  # TODO: add support for comparrison with multiple companies (change feature size from 1)
+        self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
         self.sequence_segment_length = sequence_segment_length
@@ -78,20 +77,24 @@ class StockRNN(nn.Module):
         self.train_batch_size = train_batch_size
         self.test_batch_size = test_batch_size
         self.num_workers = num_workers
-        self.label_length = label_length
+        if label_length >= self.sequence_segment_length:
+            print("Label length was specified to be {}, but cannot be >= self.sequence_segment_length; setting "
+                  "self.label_length to self.sequence_segment_length - 1.")
+            self.label_length = self.sequence_segment_length - 1
+        else:
+            self.label_length = label_length
         self.to_compare = []
 
         # company of interest
         self.coi = Company(self.ticker, self)
 
-        # TODO: utilize self.to_compare (not currently utilized)
         if to_compare is not None:
             for company in to_compare:
                 self.to_compare.append(Company(company, self))
 
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(1, self.lstm_hidden_size, self.lstm_num_layers, dropout=self.drop_prob)
-        self.dropout = nn.Dropout(drop_prob)
+        # self.dropout = nn.Dropout(drop_prob)
         self.fc_after_lstm = nn.Linear(self.lstm_hidden_size, 1)
 
         # initialize attributes with placeholder arrays
@@ -122,25 +125,18 @@ class StockRNN(nn.Module):
         else:
             self.__togpu_works__ = -1
 
-    def return_loss_and_optimizer(self):
-        r"""
-        TODO: documentation here
-
-        :return: :attr:`optimizer`
-        :return: :attr:`loss`
-        """
-        return self.optimizer, self.loss
-
     def peek_dataset(self, figsize: (int, int) = (10, 5)):
         r"""
         Creates a simple line plot of the stock data
 
-        TODO: add title and axis labels
-
         :param figsize: tuple of integers for :class:`plt.subplots` ``figsize`` argument
         """
         _, axs = plt.subplots(1, 1, figsize=figsize)
+        axs: Axes
         axs.plot(self.daily_stock_data)
+        axs.set_title("Ticker {} from {} to {}".format(self.coi.ticker, self.start_date, self.end_date))
+        axs.set_xlabel("Time")
+        axs.set_ylabel("Price (USD)")
         plt.show()
 
     def populate_daily_stock_data(self, truncate: bool = True):
@@ -162,8 +158,8 @@ class StockRNN(nn.Module):
             print(BColors.FAIL + "The specified segment length for the data to be split up into, {}, would result in "
                                  "a dataset of only one segment because the self.daily_stock_data array is of length {}"
                                  "; a minimum of 2 must be created for a train/test split (although there clearly needs"
-                                 " to be more than 2 data points to train the model).".format(
-                self.sequence_segment_length, len(self.daily_stock_data)) + BColors.WHITE)
+                                 " to be more than 2 data points to train the model)."
+                  .format(self.sequence_segment_length, len(self.daily_stock_data)) + BColors.WHITE)
             raise AssertionError
 
     def populate_test_train(self, rand_seed: int = -1):
@@ -199,7 +195,6 @@ class StockRNN(nn.Module):
         test_segments = torch.from_numpy(segmented_data[self.test_sample_indices][:, None, :]).float()
         del segmented_data
 
-        # TODO: add checks so that params produce valid splicing of array data
         X_train: Tensor = train_segments
         y_train: Tensor = train_segments[:, :, train_segments.shape[2] - self.label_length:]
         X_test: Tensor = test_segments
@@ -209,7 +204,7 @@ class StockRNN(nn.Module):
 
     def return_loaders(self) -> [DataLoader, DataLoader]:
         r"""
-        TODO: documentation here
+        Returns the :ref:`torch.utils.data.Dataloader` objects for the training and test sets
 
         :return: training DataLoader
         :return: testing DataLoader
@@ -245,7 +240,8 @@ class StockRNN(nn.Module):
 
     def populate_loaders(self):
         r"""
-        TODO: documentation here
+        Populates :attr:`train_loader`, :attr:`test_laoder`, :attr:`train_loader_len`, and `:attr:`test_loader_len`
+        attributes.
         """
         self.train_loader, self.test_loader = self.return_loaders()
         self.train_loader_len = len(self.train_loader)
@@ -253,14 +249,17 @@ class StockRNN(nn.Module):
 
     def forward(self, x: torch.Tensor):
         r"""
-        TODO: documentation here
+        Completes a forward pass of data through the network. The tensor passed in is of shape (batch size, features,
+        sequence length), and the output is of shape (batch size, 1, sequence length).
+        TODO: add support for more than one feature while still outputting a single feature prediction
+        The data is passed through a LSTM layer with an arbitrary number of layers and an arbitrary hidden size (as
+        defined by :attr:`lstm_hidden_size` and :attr:`lstm_num_layers`
 
         :param x:
         :return:
         """
         x = x.permute(2, 0, 1)  # input x needs to be converted from (batch_size, features, seqence_length) to
         # (sequence_length, batch_size, features) before being passed through the LSTM
-        # TODO: figure out why the data in each batch is exactly the same maybe...?
         lstm_out = torch.zeros((x.shape[0]), (x.shape[1]), 1)  # will store the output of the LSTM layer
         output, (h_n, c_n) = self.lstm.forward(x[0, None, :, :])  # pass in the first value of the sequence and let
         fc_output = self.fc_after_lstm.forward(output)  # reduces the hidden_size dimension to 1
@@ -281,8 +280,17 @@ class StockRNN(nn.Module):
         return lstm_out
 
     def do_training(self, num_epochs: int, verbose=True):
-        r"""
-        TODO: documentation here
+        """
+        This method trains the network using data in :attr:`train_loader` and checks against the data in
+        :attr:`test_loader` at the end of each epoch.. The forward pass through the network produces sequences of the
+        same length as the input sequences. The sequences in the label data are of length :attr:`label_length`, so the
+        output sequences are  cropped to length :attr:`label_length` before being passed through the MSE loss function.
+        Because each element of the output sequence at position ``n`` is a prediction of the input element ``n+1``, the
+        cropped windows of  the output sequences are given by the window that terminates at the second-to-last element
+        of the output sequence.
+
+        :param num_epochs: number of epochs to to run the training for
+        :param verbose: if true, print diagnostic progress updates and final training and test loss
         """
         print("Train loader size:", self.train_loader_len)
         epoch_num = 0
@@ -358,7 +366,7 @@ class StockRNN(nn.Module):
 
 if __name__ == "__main__":
     model: StockRNN
-    model = StockRNN('IBM', 5, 1)
+    model = StockRNN('IBM', 5, 5)
     model.peek_dataset()
 
     try:
