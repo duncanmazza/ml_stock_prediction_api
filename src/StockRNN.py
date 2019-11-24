@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
 import numpy as np
 from datetime import datetime
-from src.pandas_stock_data import Company
+from src.get_data import Company
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 import time

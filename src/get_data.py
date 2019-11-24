@@ -12,6 +12,9 @@ import numpy as np
 import requests
 
 
+
+
+
 class Company:
     def __init__(self, ticker: str, parent, populate_dataframe: bool = True):
         self.ticker = ticker
