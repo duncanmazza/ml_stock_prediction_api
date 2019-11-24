@@ -1,5 +1,5 @@
 import pytest
-from src.rnn.StockRNN import StockRNN
+from src.StockRNN import StockRNN
 import numpy as np
 from datetime import datetime
 

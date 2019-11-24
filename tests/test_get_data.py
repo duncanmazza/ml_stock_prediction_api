@@ -4,7 +4,7 @@ Tests the :py:mod:`src.get_data` module
 @author: Duncan Mazza
 """
 
-from src.rnn.StockRNN import StockRNN
+from src.StockRNN import StockRNN
 from tests.BColors import BColors
 import pytest
 import os

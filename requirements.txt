@@ -1,3 +1,4 @@
+requests
 numpy
 torch
 sphinx_rtd_theme
