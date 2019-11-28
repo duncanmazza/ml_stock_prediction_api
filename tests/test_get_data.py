@@ -33,7 +33,7 @@ def test_save_to_csv_saves_file_no_csv_suffix(_stock_rnn: StockRNN, test_file_pa
     :param remove_test_file:
     :return:
     """
-    _stock_rnn.coi.cache(file_path=test_file_path)
+    _stock_rnn.coi.cache(test_file_path, _stock_rnn.coi.data_frame)
     expected_output_file = os.path.join(os.getcwd(), test_file_path + ".csv")
     try:
         assert os.path.exists(expected_output_file)
@@ -55,7 +55,7 @@ def test_save_to_csv_saves_file_with_csv_suffix(_stock_rnn: StockRNN, test_file_
     :param remove_test_file:
     :return:
     """
-    _stock_rnn.coi.cache(file_path=test_file_path)
+    _stock_rnn.coi.cache(test_file_path, _stock_rnn.coi.data_frame)
     expected_output_file = os.path.join(os.getcwd(), test_file_path)
     try:
         assert os.path.exists(expected_output_file)
