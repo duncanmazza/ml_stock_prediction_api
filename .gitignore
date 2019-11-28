@@ -109,6 +109,3 @@ docs/source/_build
 
 # .idea
 .idea
-
-# api keys
-config.py
