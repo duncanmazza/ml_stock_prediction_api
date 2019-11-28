@@ -358,10 +358,12 @@ class StockRNN(nn.Module):
             print("-----------------\n"
                   "Finished training\n"
                   " >         Duration: {}s\n"
-                  " > Final train loss: {}\n"
-                  " >  Final test loss: {}".format(round(time.time() - training_start_time, 4),
-                                                   round(train_loss_list[-1], 4),
-                                                   round(test_loss_list[-1], 4)))
+                  " > Final train loss: {} (delta of {})\n"
+                  " >  Final test loss: {} (delta of {})".format(round(time.time() - training_start_time, 4),
+                                                                 round(train_loss_list[-1], 4),
+                                                                 round(train_loss_list[-1] - train_loss_list[0], 4),
+                                                                 round(test_loss_list[-1], 4),
+                                                                 round(test_loss_list[-1] - test_loss_list[0], 4)))
 
 
 if __name__ == "__main__":
