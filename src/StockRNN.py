@@ -31,10 +31,10 @@ class StockRNN(nn.Module):
     train_loader: DataLoader
     test_loader: DataLoader
 
-    def __init__(self, ticker: str, lstm_hidden_size: int, lstm_num_layers: int, to_compare: [str, ] = None,
-                 start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
-                 sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
-                 auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
+    def __init__(self, ticker: str, lstm_hidden_size: int, lstm_num_layers: int,
+                 to_compare: [str, datetime, datetime] = None, start_date: datetime = datetime(2017, 1, 1),
+                 end_date: datetime = datetime(2018, 1, 1), sequence_segment_length: int = 10, drop_prob: float = 0.5,
+                 device: str = DEVICE, auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
                  train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 5):
         r"""
         TODO: documentation here
@@ -86,11 +86,11 @@ class StockRNN(nn.Module):
         self.to_compare = []
 
         # company of interest
-        self.coi = Company(self.ticker, self)
+        self.coi = Company(self.ticker, start_date=self.start_date, end_date=self.end_date)
 
         if to_compare is not None:
-            for company in to_compare:
-                self.to_compare.append(Company(company, self))
+            for company_info in to_compare:
+                self.to_compare.append(Company(company_info[0], company_info[1], company_info[2]))
 
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(1, self.lstm_hidden_size, self.lstm_num_layers, dropout=self.drop_prob)

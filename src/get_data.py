@@ -14,13 +14,14 @@ from datetime import datetime
 
 
 class Company:
-    def __init__(self, ticker: str, parent, populate_dataframe: bool = True, cache_bool: bool = True):
+    def __init__(self, ticker: str, start_date: datetime, end_date: datetime, call_populate_dataframe: bool = True,
+                 cache_bool: bool = True):
+        self.start_date = start_date
+        self.end_date = end_date
         self.ticker = ticker
-        self.parent = parent
         self.data_frame: DataFrame = DataFrame()
-        self.initial_value = 0
         self.cache_bool = cache_bool
-        if populate_dataframe:
+        if call_populate_dataframe:
             self.populate_dataframe()
 
     def return_data(self, ticker: str = None, start_date: datetime = None, end_date: datetime = None) -> DataFrame:
@@ -37,11 +38,11 @@ class Company:
         :return: DataFrame of financial data
         """
         if start_date is None:
-            start_date = self.parent.start_date
+            start_date = self.start_date
         if end_date is None:
-            end_date = self.parent.end_date
+            end_date = self.end_date
         if ticker is None:
-            ticker = self.parent.ticker
+            ticker = self.ticker
 
         rel_file_path = os.path.join(".cache", "&".join([ticker,
                                                          start_date.__str__().strip(" 00:00:00"),
@@ -60,7 +61,7 @@ class Company:
             data_frame = web.get_data_yahoo(ticker, start_date, end_date)
             print("Loaded data for {} from {} to {} from internet".format(ticker, start_date, end_date))
         except KeyError:
-            print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(self.parent.ticker) +
+            print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(self.ticker) +
                   BColors.WHITE)
             raise KeyError
         except requests.exceptions.SSLError:

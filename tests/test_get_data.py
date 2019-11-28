@@ -4,7 +4,7 @@ Tests the :py:mod:`src.get_data` module
 @author: Duncan Mazza
 """
 
-from src.StockRNN import StockRNN
+from src.get_data import Company
 from tests.BColors import BColors
 import pytest
 import os
@@ -14,26 +14,25 @@ import numpy as np
 
 
 @pytest.fixture()
-def _stock_rnn():
+def company():
     r"""
     TODO: documentation
     """
-    return StockRNN("IBM", 1, 1, start_date=datetime(2017, 2, 9), end_date=datetime(2017, 2, 12),
-                    sequence_segment_length=1)
+    return Company("IBM", start_date=datetime(2017, 2, 9), end_date=datetime(2017, 2, 12))
 
 
-def test_save_to_csv_saves_file_no_csv_suffix(_stock_rnn: StockRNN, test_file_path="obscure_file_name",
+def test_save_to_csv_saves_file_no_csv_suffix(company: Company, test_file_path="obscure_file_name",
                                               remove_test_file: bool = True):
     r"""
     Tests whether :py:class:`src.get_data.pandas_stock_data.Company.save_to_csv` saves a file whose file name is not
     supplied with a ``.csv`` suffix
 
-    :param _stock_rnn:
+    :param company:
     :param test_file_path:
     :param remove_test_file:
     :return:
     """
-    _stock_rnn.coi.cache(test_file_path, _stock_rnn.coi.data_frame)
+    company.cache(test_file_path, company.data_frame)
     expected_output_file = os.path.join(os.getcwd(), test_file_path + ".csv")
     try:
         assert os.path.exists(expected_output_file)
@@ -45,17 +44,17 @@ def test_save_to_csv_saves_file_no_csv_suffix(_stock_rnn: StockRNN, test_file_pa
         os.remove(expected_output_file)
 
 
-def test_save_to_csv_saves_file_with_csv_suffix(_stock_rnn: StockRNN, test_file_path: str = "obscure_file_name.csv",
+def test_save_to_csv_saves_file_with_csv_suffix(company: Company, test_file_path: str = "obscure_file_name.csv",
                                                 remove_test_file: bool = True):
     r"""
     Tests whether :py:class:`src.get_data.pandas_stock_data.Company.save_to_csv` saves a file whose file name is
     supplied with a ``.csv`` suffix
-    :param _stock_rnn:
+    :param company:
     :param test_file_path:
     :param remove_test_file:
     :return:
     """
-    _stock_rnn.coi.cache(test_file_path, _stock_rnn.coi.data_frame)
+    company.cache(test_file_path, company.data_frame)
     expected_output_file = os.path.join(os.getcwd(), test_file_path)
     try:
         assert os.path.exists(expected_output_file)
@@ -67,14 +66,14 @@ def test_save_to_csv_saves_file_with_csv_suffix(_stock_rnn: StockRNN, test_file_
         os.remove(expected_output_file)
 
 
-def test_return_numpy_array_of_company_daily_stock_close(_stock_rnn: StockRNN):
+def test_return_numpy_array_of_company_daily_stock_close(company: Company):
     r"""
     TODO: documentation
 
-    :param _stock_rnn:
+    :param company:
     :return:
     """
-    stock_data = _stock_rnn.coi.return_numpy_array_of_company_daily_stock_close()
+    stock_data = company.return_numpy_array_of_company_daily_stock_close()
     assert type(stock_data) == np.ndarray
     assert len(stock_data) == 3
     compare_array = np.array([177.21000671, 178.67999268, 179.36000061])
@@ -82,14 +81,14 @@ def test_return_numpy_array_of_company_daily_stock_close(_stock_rnn: StockRNN):
     assert np.array_equal(stock_data.astype(np.int32), compare_array.astype(np.int32))
 
 
-def return_numpy_array_of_company_daily_stock_percent_change(_stock_rnn: StockRNN):
+def return_numpy_array_of_company_daily_stock_percent_change(company: Company):
     r"""
     TODO: documentation
 
-    :param _stock_rnn:
+    :param company:
     :return:
     """
-    stock_data = _stock_rnn.coi.return_numpy_array_of_company_daily_stock_percent_change()
+    stock_data = company.return_numpy_array_of_company_daily_stock_percent_change()
     assert type(stock_data) == np.ndarray
     assert len(stock_data) == 2
     compare_array = np.array([0.00829516, 0.00380573])
