@@ -16,6 +16,15 @@ from datetime import datetime
 class Company:
     def __init__(self, ticker: str, start_date: datetime, end_date: datetime, call_populate_dataframe: bool = True,
                  cache_bool: bool = True):
+        """
+        TODO: documentation here
+
+        :param ticker:
+        :param start_date:
+        :param end_date:
+        :param call_populate_dataframe:
+        :param cache_bool:
+        """
         self.start_date = start_date
         self.end_date = end_date
         self.ticker = ticker
@@ -127,6 +136,3 @@ class Company:
         start_array: np.ndarray = daily_stock_data[:-1]
         end_array: np.ndarray = daily_stock_data[1:]
         return (end_array - start_array) / start_array
-
-# if __name__ == "__main__":
-# stock_data = numpy_array_of_company_daily_stock_close_yahoo('IBM', datetime(2017, 2, 9), datetime(2017, 2, 11))
