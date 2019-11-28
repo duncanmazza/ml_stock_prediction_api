@@ -86,14 +86,13 @@ class Company:
         """
         self.data_frame = self.return_data()
 
-    @staticmethod
-    def cache(file_path: str, data_frame: DataFrame):
+    def cache(self, file_path: str, data_frame: DataFrame = None):
         """
         Saves a DataFrame as a ``.csv`` to a path relative to the current working directory.
 
-        :param data_frame: DataFrame to save
         :param file_path: path to save the :ref:`DataFrame` to; if not an absolute path, then it is used as a path
         relative to the current working directory.
+        :param data_frame: DataFrame to save (if not specified, will use :attr:`data_frame` (attribute)
         """
         if not file_path.endswith(".csv"):
             file_path += ".csv"
@@ -101,6 +100,8 @@ class Company:
             file_path = os.getcwd() + file_path
         if not os.path.isdir(os.path.join(os.getcwd(), ".cache")):
             os.mkdir(os.path.join(os.getcwd(), ".cache"))
+        if data_frame is None:
+            data_frame = self.data_frame
         data_frame.to_csv(file_path)
 
     def return_numpy_array_of_company_daily_stock_close(self) -> np.ndarray:
