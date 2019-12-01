@@ -18,7 +18,7 @@ def company():
     r"""
     TODO: documentation
     """
-    return Company("IBM", start_date=datetime(2017, 2, 9), end_date=datetime(2017, 2, 12))
+    return Company("IBM", start_date=datetime(2017, 2, 9), end_date=datetime(2017, 2, 13))
 
 
 def test_save_to_csv_saves_file_no_csv_suffix(company: Company, test_file_path="obscure_file_name",
