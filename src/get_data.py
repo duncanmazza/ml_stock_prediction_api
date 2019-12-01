@@ -6,7 +6,6 @@ Utility functions for acquiring financial data
 
 import pandas_datareader.data as web
 from pandas import DataFrame, read_csv, errors
-from tests.BColors import BColors
 import os
 import numpy as np
 import requests
@@ -32,6 +31,9 @@ class Company:
         self.ticker = ticker
         self.data_frame: DataFrame = DataFrame()
         self.cache_bool = cache_bool
+        self.end_date_changed = False
+        self.start_date_changed = False
+
         if call_populate_dataframe:
             self.populate_dataframe()
 
@@ -63,7 +65,8 @@ class Company:
         if os.path.exists(os.path.join(os.getcwd(), rel_file_path)):
             try:
                 data_frame = read_csv(os.path.join(os.getcwd(), rel_file_path))
-                print("Loaded data for {} from {} to {} from .cache/ folder".format(ticker, start_date_str, end_date_str))
+                print(
+                    "Loaded data for {} from {} to {} from .cache/ folder".format(ticker, start_date_str, end_date_str))
                 return data_frame
             except errors.ParserError:
                 print("Could not load data for {} from {} to {} from .cache/ folder (although the path exists"
@@ -73,32 +76,70 @@ class Company:
         try:
             data_frame = web.get_data_yahoo(ticker, start_date, end_date)
             print("Loaded data for {} from {} to {} from internet".format(ticker, start_date, end_date))
-        except KeyError:
-            print(BColors.FAIL + "There was an error accessing data for the ticker {}".format(self.ticker) +
-                  BColors.WHITE)
-            raise KeyError
         except requests.exceptions.SSLError:
-            print(BColors.FAIL + "A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
-                                 "internet connection; try again after verifying that you have a successful internet "
-                                 "connection." + BColors.WHITE)
+            print("A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
+                  "internet connection; try again after verifying that you have a successful internet "
+                  "connection.")
             raise requests.exceptions.SSLError
         except requests.exceptions.ConnectionError:
-            print(BColors.FAIL + "A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a "
-                                 "lack of internet connection; try again after verifying that you have a successful "
-                                 "internet connection." + BColors.WHITE)
+            print("A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a "
+                  "lack of internet connection; try again after verifying that you have a successful "
+                  "internet connection.")
             raise requests.exceptions.ConnectionError
 
         if self.cache_bool:
             self.cache(rel_file_path, data_frame)
+
+        # loading the dataframe from the internet as opposed to from the csv cache results in a different handling of
+        # the timestamp index, where the timestamp index is converted to a "Date" column when cached. Consequently,
+        # a "Date" column needs to be inserted
+        data_frame.insert(0, "Date", data_frame.index)
 
         return data_frame
 
     def populate_dataframe(self):
         r"""
         Populates :attr:`data_frame` with stock data acquired using pandas_datareader.data. View more information
-        `here <https://pandas-datareader.readthedocs.io/en/latest/remote_data.html>`__.
+        `here <https://pandas-datareader.readthedocs.io/en/latest/remote_data.html>`__. Modifies :attr:`start_date`,
+        :attr:`start_date_changed`, :attr:`end_date`, and :attr:`end_date_changed` if :attr:`start_date` and/or
+        :attr:`end_date` are different than the actual start and end dates in :attr:`data_frame` such that
+        :attr:`start_date` and :attr:`end_date` equal the actual start and end dates in :attr:`data_frame` (and
+        :attr:`start_date_changed` and :attr:`end_date_changed` reflect whether :attr:`start_date` and :attr:`end_date`
+        were changed respectively).
         """
         self.data_frame = self.return_data()
+        data_frame_start_date = self.data_frame["Date"][0]
+        data_frame_end_date = self.data_frame["Date"][self.data_frame.last_valid_index()]
+        if data_frame_start_date != self.start_date:
+            self.start_date = data_frame_start_date
+            self.start_date_changed = True
+        if data_frame_end_date != self.end_date:
+            self.end_date = data_frame_end_date
+            self.end_date_changed = True
+
+    def revise_start_date(self, new_start_date: datetime):
+        """
+        Modifies :attr:`data_frame` such that the starting date of the data is equal to ``new_start_date`` (all prior
+        data is deleted).
+
+        :param new_start_date: a datetime object of the new start date for :attr:`data_frame` (where ``new_start_date``
+         exists and is unique in ``self.data_frame["Date"]``
+        """
+        loc = self.data_frame["Date"][self.data_frame["Date"] == new_start_date].index[0]
+        self.data_frame = self.data_frame[loc:]
+        self.start_date = new_start_date
+
+    def revise_end_date(self, new_end_date: datetime):
+        """
+        Modifies :attr:`data_frame` such that the last date of the data is equal to ``new_end_date`` (all following
+        data is deleted).
+
+        :param new_end_date: a datetime object of the new end date for :attr:`data_frame` (where ``new_end_date``
+         exists and is unique in ``self.data_frame["Date"]``
+        """
+        loc = self.data_frame["Date"][self.data_frame["Date"] == new_end_date].index[0]
+        self.data_frame = self.data_frame[:loc + 1]  # add 1 so that the last date is included
+        self.end_date = new_end_date
 
     def cache(self, file_path: str, data_frame: DataFrame = None):
         """

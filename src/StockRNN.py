@@ -15,6 +15,8 @@ from datetime import datetime
 from src.get_data import Company
 import matplotlib.pyplot as plt
 import time
+from pandas import _libs
+from pandas_datareader._utils import RemoteDataError
 
 ZERO_TIME = " 00:00:00"
 
@@ -72,9 +74,6 @@ class StockRNN(nn.Module):
         self.start_date = start_date
         self.end_date = end_date
 
-        self.start_date_str = self.start_date.__str__().strip(ZERO_TIME)
-        self.end_date_str = self.end_date.__str__().strip(ZERO_TIME)
-
         self.sequence_segment_length = sequence_segment_length
         self.auto_populate = auto_populate
         self.train_data_prop = train_data_prop
@@ -92,13 +91,50 @@ class StockRNN(nn.Module):
         # company in index 0 is the company whose stock is being predicted
         self.companies = [Company(self.ticker, self.start_date, self.end_date)]
 
+        start_date_changes = []
+        end_date_changes = []
         if to_compare is not None:
             for company_ticker in to_compare:
                 try:
                     self.companies.append(Company(company_ticker, self.start_date, self.end_date))
                 except KeyError:
+                    print("There was a KeyError exception raised when accessing data for the ticker {}; will skip this "
+                          "ticker".format(company_ticker))
                     continue
+                except _libs.tslibs.np_datetime.OutOfBoundsDatetime:
+                    print("There was a _libs.tslibs.np_datetime.OutOfBoundsDatetime exception raised when accessing "
+                          "data for the ticker {}; will skip this ticker".format(company_ticker))
+                    continue
+                except RemoteDataError:
+                    print("There was a RemoteDataError when fetching data for ticker '{}'; will skip this ticker"
+                          .format(company_ticker))
+                    continue
+
+                if self.companies[-1].start_date_changed:
+                    start_date_changes.append(self.companies[-1].start_date)
+                if self.companies[-1].end_date_changed:
+                    end_date_changes.append(self.companies[-1].end_date)
+
         self.num_companies = len(self.companies)
+
+        # revise the start date of all of the data
+        if len(start_date_changes) != 0:
+            self.start_date = max(start_date_changes)
+            for company in self.companies:
+                company.revise_start_date(self.start_date)
+            print("Data did not exist for every ticker at start date of {}; revising to the most recent starting time "
+                  "(common among all companies' data) of {}".format(start_date.__str__().strip(ZERO_TIME),
+                                                                    self.start_date.__str__().strip(ZERO_TIME)))
+        # revise the end date of all of the data
+        if len(end_date_changes) != 0:
+            self.end_date = min(end_date_changes)
+            for company in self.companies:
+                company.revise_end_date(self.end_date)
+            print("Data did not exist for every ticker at end date of {}; revising to the earliest ending time "
+                  "(common among all companies' data) of {}".format(start_date.__str__().strip(ZERO_TIME),
+                                                                    self.start_date.__str__().strip(ZERO_TIME)), end="")
+        self.start_date_str = self.start_date.__str__().strip(ZERO_TIME)
+        self.end_date_str = self.end_date.__str__().strip(ZERO_TIME)
 
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(input_size=self.num_companies, hidden_size=self.lstm_hidden_size,
@@ -336,9 +372,11 @@ class StockRNN(nn.Module):
         :param num_epochs: number of epochs to to run the training for
         :param verbose: if true, print diagnostic progress updates and final training and test loss
         :param plot_output: if true, plot the results of the final pass through the LSTM with a randomly selected
-         segment of data
+        segment of data
+        :param plot_output_figsize: ``figsize`` argument for the output plot
+        :param plot_loss: if true, plot the training and test loss
+        :param plot_loss_figsize: ``figsize`` argument for the loss plot
         """
-        print("Train loader size:", self.train_loader_len)
         epoch_num = 0
         pass_num = 0
         training_start_time = time.time()
@@ -354,8 +392,7 @@ class StockRNN(nn.Module):
 
         while epoch_num <= num_epochs:
             if verbose:
-                print("Epoch num: {} | Progress: ".format(epoch_num))
-            pass_num_this_epoch = 0
+                print("Epoch num: {}/{}: ".format(epoch_num, num_epochs))
             for i, data in enumerate(self.train_loader, 0):
                 train_inputs, train_labels = data
                 # send inputs and labels to the gpu if possible
@@ -372,23 +409,20 @@ class StockRNN(nn.Module):
                 train_loss_list_idx.append(pass_num)
                 self.optimizer.step()
                 pass_num += 1
-                pass_num_this_epoch += 1
                 if verbose:
-                    percent = round(100 * pass_num_this_epoch / self.train_loader_len)
+                    percent = round(100 * (i + 1) / self.train_loader_len)
                     percent_floored_by_10: int = (percent // 10)
-                    end = " train loss size = {}".format(round(train_loss_list[-1], 4))
-                    if pass_num_this_epoch == self.train_loader_len:
-                        end += "\n"
-                    else:
-                        end += "\r"
+                    front = '\r' if i != 0 else ""
                     print(
-                        "-> {}% [".format(percent) + "-" * percent_floored_by_10 + " " * (10 - percent_floored_by_10)
-                        + "]", end=end)
+                        "{}   > {}% [".format(front, percent) + "-" * percent_floored_by_10 + " " * (
+                                10 - percent_floored_by_10)
+                        + "] train loss size = {}".format(round(train_loss_list[-1], 4)), end="")
 
             # do a run on the test set at the end of every epoch:
             test_loss_this_epoch = 0
             if epoch_num == num_epochs and plot_output:
-                _, axes = plt.subplots(1, self.test_loader_len, figsize=plot_output_figsize)
+                _, axes = plt.subplots(1, self.test_loader_len if self.test_loader_len <= 3 else 3,
+                                       figsize=plot_output_figsize)
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
                 if self.__togpu_works__ == 1:  # send inputs and labels to the gpu if possible
@@ -397,7 +431,7 @@ class StockRNN(nn.Module):
                 output = self.forward(test_inputs)
                 test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
                 test_loss_this_epoch += test_loss_size.data.item()
-                if epoch_num == num_epochs and plot_output:
+                if epoch_num == num_epochs and plot_output and i <= 3:
                     axes[i].plot(np.arange(0, self.sequence_segment_length, 1), test_inputs[0, 0, :].detach().numpy(),
                                  label="orig")
                     axes[i].plot(np.arange(1, self.sequence_segment_length + 1, 1), output[0, 0, :].detach().numpy(),
@@ -415,7 +449,7 @@ class StockRNN(nn.Module):
             test_loss_list_idx.append(pass_num)
             epoch_num += 1
             if verbose:
-                print("test loss size = {}".format(round(test_loss_list[-1], 4)))
+                print(" | test loss size = {}".format(round(test_loss_list[-1], 4)))
 
         if verbose:
             print("-----------------\n"
