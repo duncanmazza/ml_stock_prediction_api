@@ -12,6 +12,8 @@ import numpy as np
 import requests
 from datetime import datetime
 
+ZERO_TIME = " 00:00:00"
+
 
 class Company:
     def __init__(self, ticker: str, start_date: datetime, end_date: datetime, call_populate_dataframe: bool = True,
@@ -53,13 +55,15 @@ class Company:
         if ticker is None:
             ticker = self.ticker
 
+        start_date_str = start_date.__str__().strip(ZERO_TIME)
+        end_date_str = end_date.__str__().strip(ZERO_TIME)
         rel_file_path = os.path.join(".cache", "&".join([ticker,
-                                                         start_date.__str__().strip(" 00:00:00"),
-                                                         end_date.__str__().strip(" 00:00:00")])) + ".csv"
+                                                         start_date_str,
+                                                         end_date_str])) + ".csv"
         if os.path.exists(os.path.join(os.getcwd(), rel_file_path)):
             try:
                 data_frame = read_csv(os.path.join(os.getcwd(), rel_file_path))
-                print("Loaded data for {} from {} to {} from .cache/ folder".format(ticker, start_date, end_date))
+                print("Loaded data for {} from {} to {} from .cache/ folder".format(ticker, start_date_str, end_date_str))
                 return data_frame
             except errors.ParserError:
                 print("Could not load data for {} from {} to {} from .cache/ folder (although the path exists"
