@@ -94,6 +94,7 @@ class Company:
         # the timestamp index, where the timestamp index is converted to a "Date" column when cached. Consequently,
         # a "Date" column needs to be inserted
         data_frame.insert(0, "Date", data_frame.index)
+        data_frame.index = np.arange(0, len(data_frame), 1)
 
         return data_frame
 
