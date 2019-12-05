@@ -38,7 +38,7 @@ class StockRNN(nn.Module):
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
                  sequence_segment_length: int = 40, drop_prob: float = 0.5, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
-                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 20):
+                 train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 20):
         r"""
         TODO: documentation here
 
@@ -341,11 +341,15 @@ class StockRNN(nn.Module):
         lstm_out = torch.zeros((X.shape[0], X.shape[1] + predict_beyond, self.num_companies))  # will store the output of the LSTM layer
         output, (h_n, c_n) = self.lstm.forward(X[:, 0, None, :])  # pass in the first value of the sequence and let
         # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, hidden_size)
-        for i in range(0, X.shape[1]):  # loop over the rest of the sequence; pass in a value one at
+        for i in range(X.shape[1]):  # loop over the rest of the sequence; pass in a value one at
             # a time and save the hidden state to pass to the next forward pass
             if i != 0:
                 output, (h_n, c_n) = self.lstm.forward(X[:, i, None, :], (h_n, c_n))
-            output = self.act(output)
+            # input_numpy = X[:, i, None, :].detach().numpy()
+            # print("input mean: ", np.mean(input_numpy))
+            # intermediate_output = output.detach().numpy()
+            # print("output mean: ", np.mean(intermediate_output))
+            # output = self.act(output)
             output = self.fc_1.forward(output)
             output = self.act(output)
             output = self.fc_2.forward(output)
@@ -430,8 +434,10 @@ class StockRNN(nn.Module):
             # do a run on the test set at the end of every epoch:
             test_loss_this_epoch = 0
             if epoch_num == num_epochs and plot_output:
-                _, axes = plt.subplots(self.test_loader_len if self.test_loader_len <= 3 else 3, 1,
-                                       figsize=plot_output_figsize)
+                subplot_val = self.test_loader_len if self.test_loader_len <= 3 else 3
+                _, axes = plt.subplots(subplot_val, 1, figsize=plot_output_figsize)
+                if subplot_val == 1:
+                    axes = [axes,]
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
                 if self.__togpu_works__ == 1:  # send inputs and labels to the gpu if possible
@@ -494,9 +500,8 @@ if __name__ == "__main__":
         model.__togpu__(True)
     except RuntimeError:
         print(TO_GPU_FAIL_MSG)
-        raise RuntimeError
     except AssertionError:
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    model.do_training(20)
+    model.do_training(num_epochs=20)
