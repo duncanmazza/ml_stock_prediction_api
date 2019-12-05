@@ -1,7 +1,8 @@
 ![](https://github.com/duncanmazza/moneymaker/workflows/Build%20Status/badge.svg)
 
-# Moneymaker
 Project for Machine Leraning: api for predicting stock prices
+
+## Project Status: IN PROGRESS 
 
 TODO: finish README
 
