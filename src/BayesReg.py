@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import warnings
 import theano.tensor as tt
-from get_data import Company
+from src.get_data import Company
 
 class CashMoneySwag():
     def __init__(self, ticker, start_date=datetime(2000,1,1), end_date=datetime(2019,10,31)):
@@ -12,11 +12,12 @@ class CashMoneySwag():
         self.start_date = start_date
         self.end_date = end_date
 
-        self.comp = Company(ticker, self)
+        self.comp = Company(ticker, self.start_date, self.end_date)
         self.data = self.prep_data()
         self.split_date = self.data_early = self.data_later = None
 
     def prep_data(self):
+        self.comp.data_frame.index = pd.to_datetime(self.comp.data_frame.Date)
         raw_y = self.comp.return_numpy_array_of_company_daily_stock_close()
         norm_y = (raw_y-raw_y[0])/np.std(raw_y)
         t = self._dates_to_idx(self.comp.data_frame.index)
@@ -30,11 +31,11 @@ class CashMoneySwag():
         self.train_start = start_date
         self.test_end = end_date
         self.split_date=split_date
-        start_idx = cms.data.index.searchsorted(start_date)
-        sep_idx = cms.data.index.searchsorted(split_date) # Y-M-D
-        end_idx = cms.data.index.searchsorted(end_date)
-        self.data_early = cms.data.iloc[start_idx:sep_idx, :]
-        self.data_later = cms.data.iloc[sep_idx:end_idx+1, :]
+        start_idx = self.data.index.searchsorted(start_date)
+        sep_idx = self.data.index.searchsorted(split_date) # Y-M-D
+        end_idx = self.data.index.searchsorted(end_date)
+        self.data_early = self.data.iloc[start_idx:sep_idx, :]
+        self.data_later = self.data.iloc[sep_idx:end_idx+1, :]
 
     def train_gp(self):
         with pm.Model() as model:
@@ -142,10 +143,10 @@ class CashMoneySwag():
         return np.asarray(t)
 
 
-if __name__ == "__main__":
-    cms = CashMoneySwag('AAPL')
-    rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]
-    cms.gen_test_train_data(start_date=rg[0],split_date=rg[1],end_date=rg[2])
-    cms.train_gp()
-    cms.predict_gp()
-    xy_pred, std_bounds, train_data, test_data = cms.get_plot_vals()
+# if __name__ == "__main__":
+#     cms = CashMoneySwag('AAPL')
+#     rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]
+#     cms.gen_test_train_data(start_date=rg[0],split_date=rg[1],end_date=rg[2])
+#     cms.train_gp()
+#     cms.predict_gp()
+#     xy_pred, std_bounds, train_data, test_data = cms.get_plot_vals()
