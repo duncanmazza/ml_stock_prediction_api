@@ -36,9 +36,9 @@ class StockRNN(nn.Module):
 
     def __init__(self, ticker: str, lstm_hidden_size: int = 5, lstm_num_layers: int = 5, to_compare: [str, ] = None,
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
-                 sequence_segment_length: int = 10, drop_prob: float = 0.5, device: str = DEVICE,
+                 sequence_segment_length: int = 40, drop_prob: float = 0.5, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
-                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 5):
+                 train_batch_size: int = 2, test_batch_size: int = 2, num_workers: int = 2, label_length: int = 20):
         r"""
         TODO: documentation here
 
@@ -139,8 +139,9 @@ class StockRNN(nn.Module):
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(input_size=self.num_companies, hidden_size=self.lstm_hidden_size,
                             num_layers=self.lstm_num_layers, dropout=self.drop_prob, batch_first=True)
-        # self.dropout = nn.Dropout(drop_prob)
-        self.fc_make_one_feature = nn.Linear(self.lstm_hidden_size, 1)
+        self.fc_1 = nn.Linear(self.lstm_hidden_size, 10)
+        self.fc_2 = nn.Linear(10, self.num_companies)
+        self.act = nn.Tanh()
 
         # initialize attributes with placeholder arrays
         self.daily_stock_data = np.array(0)
@@ -274,8 +275,8 @@ class StockRNN(nn.Module):
         X_test: Tensor = torch.from_numpy(segmented_data[self.test_sample_indices, :, :]).float()
         del segmented_data
         # the data for the labels is the data in the first position of the features dimension
-        y_train: Tensor = X_train[:, 0, None, -self.label_length:]
-        y_test: Tensor = X_test[:, 0, None, -self.label_length:]
+        y_train: Tensor = X_train[:, :, -self.label_length:]
+        y_test: Tensor = X_test[:, :, -self.label_length:]
         self.train_set = TensorDataset(X_train, y_train)
         self.test_set = TensorDataset(X_test, y_test)
 
@@ -332,33 +333,40 @@ class StockRNN(nn.Module):
         and :attr:`lstm_num_layers`
 
         :param X: input matrix of data of shape: (batch size, features (number of companies), sequence length)
+        :param predict_beyond: TODO
         :return: output of the forward pass of the data through the network (same shape as input)
         """
         X = X.permute(0, 2, 1)  # input x needs to be converted from (batch_size, features, sequence_length) to
         # (batch_size, sequence_length, features)
-        lstm_out = torch.zeros((X.shape[0], X.shape[1] + predict_beyond, 1))  # will store the output of the LSTM layer
+        lstm_out = torch.zeros((X.shape[0], X.shape[1] + predict_beyond, self.num_companies))  # will store the output of the LSTM layer
         output, (h_n, c_n) = self.lstm.forward(X[:, 0, None, :])  # pass in the first value of the sequence and let
-        fc_output = self.fc_make_one_feature.forward(output)  # reduces the hidden_size dimension to 1
-        lstm_out[:, 0, :] = fc_output[:, 0, :]
-        # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, features * hidden_size)
-        # where, for now, the hidden_size = 1 and the sequence length = 1
-        for i in range(1, X.shape[1]):  # loop over the rest of the sequence; pass in a value one at
+        # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, hidden_size)
+        for i in range(0, X.shape[1]):  # loop over the rest of the sequence; pass in a value one at
             # a time and save the hidden state to pass to the next forward pass
-            output, (h_n, c_n) = self.lstm.forward(X[:, i, None, :], (h_n, c_n))
-            fc_output = self.fc_make_one_feature.forward(output)
-            lstm_out[:, i, :] = fc_output[:, 0, :]
+            if i != 0:
+                output, (h_n, c_n) = self.lstm.forward(X[:, i, None, :], (h_n, c_n))
+            output = self.act(output)
+            output = self.fc_1.forward(output)
+            output = self.act(output)
+            output = self.fc_2.forward(output)
+            output = self.act(output)
+            lstm_out[:, i, :] = output[:, 0, :]
+
         if predict_beyond != 0:
             for i in range(0, predict_beyond):
                 output, (h_n, c_n) = self.lstm.forward(lstm_out[:, i + X.shape[1] - 1, None, :], (h_n, c_n))
-                fc_output = self.fc_make_one_feature.forward(output)
-                lstm_out[:, i + X.shape[1], :] = fc_output[:, 0, :]
+                output = self.fc_1.forward(output)
+                # output = self.act(output)
+                output = self.fc_2.forward(output)
+                # output = self.act(output)
+                lstm_out[:, i + X.shape[1], :] = output[:, 0, :]
 
         # Convert from (batch_size, hidden_size) to (batch_size, features, sequence_length)
         lstm_out = lstm_out.permute(0, 2, 1)
         return lstm_out
 
     def do_training(self, num_epochs: int, verbose=True, plot_output: bool = True,
-                    plot_output_figsize: (int, int) = (15, 5), plot_loss: bool = True,
+                    plot_output_figsize: (int, int) = (5, 10), plot_loss: bool = True,
                     plot_loss_figsize: (int, int) = (7, 5)):
         """
         This method trains the network using data in :attr:`train_loader` and checks against the data in
@@ -404,6 +412,7 @@ class StockRNN(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(train_inputs)
                 train_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
+
                 train_loss_size.backward()
                 train_loss_list.append(train_loss_size.data.item())
                 train_loss_list_idx.append(pass_num)
@@ -421,7 +430,7 @@ class StockRNN(nn.Module):
             # do a run on the test set at the end of every epoch:
             test_loss_this_epoch = 0
             if epoch_num == num_epochs and plot_output:
-                _, axes = plt.subplots(1, self.test_loader_len if self.test_loader_len <= 3 else 3,
+                _, axes = plt.subplots(self.test_loader_len if self.test_loader_len <= 3 else 3, 1,
                                        figsize=plot_output_figsize)
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
@@ -431,6 +440,7 @@ class StockRNN(nn.Module):
                 output = self.forward(test_inputs)
                 test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
                 test_loss_this_epoch += test_loss_size.data.item()
+
                 if epoch_num == num_epochs and plot_output and i <= 3:
                     axes[i].plot(np.arange(0, self.sequence_segment_length, 1), test_inputs[0, 0, :].detach().numpy(),
                                  label="orig")
@@ -441,6 +451,7 @@ class StockRNN(nn.Module):
                         "Output".format(self.companies[0].ticker, self.start_date_str, self.end_date_str, i))
                     axes[i].set_xlabel("Time")
                     axes[i].set_ylabel("Price (USD)")
+
             if epoch_num == num_epochs and plot_output:
                 plt.legend()
                 plt.show()
@@ -475,8 +486,8 @@ class StockRNN(nn.Module):
 
 if __name__ == "__main__":
     model: StockRNN
-    model = StockRNN("IBM", to_compare=["IBM", "IBM"])
-    # model.peek_dataset()
+    model = StockRNN("IBM", to_compare=["AAPL"], start_date=datetime(2016, 1, 1), end_date=datetime(2019, 1, 1))
+    model.peek_dataset()
 
     try:
         model.to(DEVICE)
@@ -488,4 +499,4 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    model.do_training(40)
+    model.do_training(20)
