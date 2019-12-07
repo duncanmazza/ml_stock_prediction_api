@@ -338,36 +338,13 @@ class StockRNN(nn.Module):
         """
         X = X.permute(0, 2, 1)  # input x needs to be converted from (batch_size, features, sequence_length) to
         # (batch_size, sequence_length, features)
-        lstm_out = torch.zeros((X.shape[0], X.shape[1] + predict_beyond, self.num_companies))  # will store the output of the LSTM layer
-        output, (h_n, c_n) = self.lstm.forward(X[:, 0, None, :])  # pass in the first value of the sequence and let
-        # Pytorch initialize the hidden layer; output is of shape (sequence_length, batch_size, hidden_size)
-        for i in range(X.shape[1]):  # loop over the rest of the sequence; pass in a value one at
-            # a time and save the hidden state to pass to the next forward pass
-            if i != 0:
-                output, (h_n, c_n) = self.lstm.forward(X[:, i, None, :], (h_n, c_n))
-            # input_numpy = X[:, i, None, :].detach().numpy()
-            # print("input mean: ", np.mean(input_numpy))
-            # intermediate_output = output.detach().numpy()
-            # print("output mean: ", np.mean(intermediate_output))
-            # output = self.act(output)
-            output = self.fc_1.forward(output)
-            output = self.act(output)
-            output = self.fc_2.forward(output)
-            output = self.act(output)
-            lstm_out[:, i, :] = output[:, 0, :]
-
-        if predict_beyond != 0:
-            for i in range(0, predict_beyond):
-                output, (h_n, c_n) = self.lstm.forward(lstm_out[:, i + X.shape[1] - 1, None, :], (h_n, c_n))
-                output = self.fc_1.forward(output)
-                # output = self.act(output)
-                output = self.fc_2.forward(output)
-                # output = self.act(output)
-                lstm_out[:, i + X.shape[1], :] = output[:, 0, :]
-
-        # Convert from (batch_size, hidden_size) to (batch_size, features, sequence_length)
-        lstm_out = lstm_out.permute(0, 2, 1)
-        return lstm_out
+        output, _ = self.lstm.forward(X)
+        output = self.fc_1.forward(output)
+        output = self.act(output)
+        output = self.fc_2.forward(output)
+        output = self.act(output)
+        output = output.permute(0, 2, 1)
+        return output
 
     def do_training(self, num_epochs: int, verbose=True, plot_output: bool = True,
                     plot_output_figsize: (int, int) = (5, 10), plot_loss: bool = True,
