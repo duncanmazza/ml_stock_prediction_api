@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import time
 from pandas import _libs
 from pandas_datareader._utils import RemoteDataError
+import os
 
 ZERO_TIME = " 00:00:00"
 
@@ -34,11 +35,12 @@ class StockRNN(nn.Module):
     train_loader: DataLoader
     test_loader: DataLoader
 
-    def __init__(self, ticker: str, lstm_hidden_size: int = 5, lstm_num_layers: int = 5, to_compare: [str, ] = None,
+    def __init__(self, ticker: str, lstm_hidden_size: int = 5, lstm_num_layers: int = 4, to_compare: [str, ] = None,
                  start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
-                 sequence_segment_length: int = 40, drop_prob: float = 0.5, device: str = DEVICE,
+                 sequence_segment_length: int = 50, drop_prob: float = 0.2, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
-                 train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 20):
+                 train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 20,
+                 try_load_weights: bool = False, save_state_dict : bool = True):
         r"""
         TODO: documentation here
 
@@ -73,7 +75,6 @@ class StockRNN(nn.Module):
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
-
         self.sequence_segment_length = sequence_segment_length
         self.auto_populate = auto_populate
         self.train_data_prop = train_data_prop
@@ -81,6 +82,7 @@ class StockRNN(nn.Module):
         self.train_batch_size = train_batch_size
         self.test_batch_size = test_batch_size
         self.num_workers = num_workers
+        self.save_state_dict = save_state_dict
         if label_length >= self.sequence_segment_length:
             print("Label length was specified to be {}, but cannot be >= self.sequence_segment_length; setting "
                   "self.label_length to self.sequence_segment_length - 1.")
@@ -94,6 +96,7 @@ class StockRNN(nn.Module):
         start_date_changes = []
         end_date_changes = []
         if to_compare is not None:
+            to_compare.sort()
             for company_ticker in to_compare:
                 try:
                     self.companies.append(Company(company_ticker, self.start_date, self.end_date))
@@ -132,9 +135,21 @@ class StockRNN(nn.Module):
                 company.revise_end_date(self.end_date)
             print("Data did not exist for every ticker at end date of {}; revising to the earliest ending time "
                   "(common among all companies' data) of {}".format(start_date.__str__().strip(ZERO_TIME),
-                                                                    self.start_date.__str__().strip(ZERO_TIME)), end="")
+                                                                    self.start_date.__str__().strip(ZERO_TIME)))
         self.start_date_str = self.start_date.__str__().strip(ZERO_TIME)
         self.end_date_str = self.end_date.__str__().strip(ZERO_TIME)
+
+        # sting that describes the parameters for this model such that files for weights can be successfully loaded
+        if self.num_companies > 1:
+            considering_string = "_CONSIDERING_" + "&".join(list(map(lambda company:
+                                                                     company.ticker, self.companies[1:])))
+        else:
+            considering_string = ""
+        self.identifier = "MODEL_FOR_" + self.companies[0].ticker + considering_string + \
+            "_WITH_lstm_hidden_size_{}_lstm_num_layers_{}_input_size_{}".format(self.lstm_hidden_size,
+                                                                                self.lstm_num_layers,
+                                                                                self.num_companies)
+        self.model_weights_path = os.path.join(os.getcwd(), ".cache", self.identifier)
 
         # initialize objects used during forward pass
         self.lstm = nn.LSTM(input_size=self.num_companies, hidden_size=self.lstm_hidden_size,
@@ -159,6 +174,17 @@ class StockRNN(nn.Module):
             self.populate_daily_stock_data()
             self.populate_test_train()
             self.populate_loaders()
+
+        if try_load_weights:
+            try:
+                weights = torch.load(os.path.join(os.getcwd(), ".cache", self.identifier))
+                self.load_state_dict(weights)
+                print("Loded weights form file")
+            except FileNotFoundError:
+                print("Tried loading state dict from file but could not find file: '{}'".format(
+                    os.path.join(os.getcwd(), ".cache", self.identifier)))
+            except:
+                print("Could not laod state dict for an unknown reason")
 
     def __togpu__(self, successful):
         r"""
@@ -338,13 +364,26 @@ class StockRNN(nn.Module):
         """
         X = X.permute(0, 2, 1)  # input x needs to be converted from (batch_size, features, sequence_length) to
         # (batch_size, sequence_length, features)
-        output, _ = self.lstm.forward(X)
+        output, (h, c) = self.lstm.forward(X)
         output = self.fc_1.forward(output)
         output = self.act(output)
         output = self.fc_2.forward(output)
         output = self.act(output)
-        output = output.permute(0, 2, 1)
-        return output
+        if predict_beyond == 0:
+            output = output.permute(0, 2, 1)
+            return output
+        else:
+            new_output = torch.zeros(output.shape[0], output.shape[1] + predict_beyond, output.shape[2])
+            new_output[:, :output.shape[1], :] = output
+            for i in range(predict_beyond):
+                predict_beyond_out, (h, c) = self.lstm.forward(output[:, -1, None, :], (h, c))
+                predict_beyond_out = self.fc_1.forward(predict_beyond_out)
+                predict_beyond_out = self.act(predict_beyond_out)
+                predict_beyond_out = self.fc_2.forward(predict_beyond_out)
+                predict_beyond_out = self.act(predict_beyond_out)
+                new_output[:, self.sequence_segment_length + i, :] = predict_beyond_out
+            new_output = new_output.permute(0, 2, 1)
+            return new_output
 
     def do_training(self, num_epochs: int, verbose=True, plot_output: bool = True,
                     plot_output_figsize: (int, int) = (5, 10), plot_loss: bool = True,
@@ -414,7 +453,7 @@ class StockRNN(nn.Module):
                 subplot_val = self.test_loader_len if self.test_loader_len <= 3 else 3
                 _, axes = plt.subplots(subplot_val, 1, figsize=plot_output_figsize)
                 if subplot_val == 1:
-                    axes = [axes,]
+                    axes = [axes, ]
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
                 if self.__togpu_works__ == 1:  # send inputs and labels to the gpu if possible
@@ -456,6 +495,16 @@ class StockRNN(nn.Module):
                                                                  round(test_loss_list[-1], 4),
                                                                  round(test_loss_list[-1] - test_loss_list[0], 4)))
 
+        if self.save_state_dict:
+            if not os.path.isdir(os.path.join(os.getcwd(), ".cache")):
+                os.mkdir(os.path.join(os.getcwd(), ".cache"))
+            try:
+                torch.save(self.state_dict(), self.model_weights_path)
+                print("Saved model weights to '{}'".format(self.model_weights_path))
+            except:
+                print("WARNING: an unknown exception occured when trying to save model weights")
+
+
         if plot_loss:
             _, axes = plt.subplots(1, 1, figsize=plot_loss_figsize)
             axes.plot(train_loss_list_idx, train_loss_list, label="train")
@@ -466,10 +515,29 @@ class StockRNN(nn.Module):
             plt.legend()
             plt.show()
 
+    def make_prediction_with_validation(self, predict_beyond: int = 10, num_plots: int = 2):
+        r"""
+        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out. The sequence length
+        of the data passed to the forward pass is given by ``self.sequence_segment_length - predict_beyond``, and the
+        actual values of the stock are shown alongside.
+
+        :param predict_beyond: days to predict ahead in the future
+        :param num_plots:
+        :return:
+        """
+        data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - self.sequence_segment_length, num_plots)
+        prediction_data = self.daily_stock_data[:, data_start_indices]
+        # TODO: Finish
+
 
 if __name__ == "__main__":
     model: StockRNN
-    model = StockRNN("IBM", to_compare=["AAPL"], start_date=datetime(2016, 1, 1), end_date=datetime(2019, 1, 1))
+
+    # comment/un-comment to switch between loading saved weights if available and
+    try_load_weights = True
+
+    model = StockRNN("IBM", to_compare=["HPE", "XRX", "ACN", "ORCL"], start_date=datetime(2016, 1, 1),
+                     end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
     model.peek_dataset()
 
     try:
@@ -482,3 +550,5 @@ if __name__ == "__main__":
         model.__togpu__(False)
 
     model.do_training(num_epochs=20)
+
+    model.make_prediction_with_validation()
