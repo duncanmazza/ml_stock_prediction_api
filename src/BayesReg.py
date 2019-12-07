@@ -7,23 +7,29 @@ import theano.tensor as tt
 from src.get_data import Company
 
 class CashMoneySwag():
-    def __init__(self, ticker, start_date=datetime(2000,1,1), end_date=datetime(2019,10,31)):
+    def __init__(self, ticker, start_date=datetime(2000,1,1), end_date=datetime.today()):
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
 
         self.comp = Company(ticker, self.start_date, self.end_date)
-        self.data = self.prep_data()
+        self.data = self._prep_data()
         self.split_date = self.data_early = self.data_later = None
 
-    def prep_data(self):
+    def _prep_data(self):
         self.comp.data_frame.index = pd.to_datetime(self.comp.data_frame.Date)
         raw_y = self.comp.return_numpy_array_of_company_daily_stock_close()
         norm_y = (raw_y-raw_y[0])/np.std(raw_y)
         t = self._dates_to_idx(self.comp.data_frame.index)
         return pd.DataFrame(data={'t':t, 'norm_y':norm_y, 'raw_y': raw_y},index=self.comp.data_frame.index)
 
-    def gen_test_train_data(self, start_date=None,split_date=pd.to_datetime("2019-09-30"),end_date=None):
+    def go(self, start_date=None,split_date=pd.to_datetime("2019-09-30"),end_date=None):
+        self._gen_test_train_data(start_date, split_date, end_date)
+        self._train_gp()
+        self._predict_gp()
+        return self._get_plot_vals()
+
+    def _gen_test_train_data(self, start_date, split_date, end_date):
         if start_date==None:
             start_date=self.start_date
         if end_date==None:
@@ -37,7 +43,7 @@ class CashMoneySwag():
         self.data_early = self.data.iloc[start_idx:sep_idx, :]
         self.data_later = self.data.iloc[sep_idx:end_idx+1, :]
 
-    def train_gp(self):
+    def _train_gp(self):
         with pm.Model() as model:
             # yearly periodic component x long term trend
             η_per = pm.HalfCauchy("η_per", beta=0.75, testval=1.0)
@@ -78,7 +84,7 @@ class CashMoneySwag():
             # this line calls an optimizer to find the MAP
             self.mp = pm.find_MAP(include_transformed=True)
 
-    def predict_gp(self):
+    def _predict_gp(self):
         # predict at a 15 day granularity
         dates = pd.date_range(start=self.train_start, end=self.test_end, freq="5D")
         tnew = self._dates_to_idx(dates)[:,None]
@@ -96,19 +102,19 @@ class CashMoneySwag():
                             "sd_total": np.sqrt(var_pred)},
                            index=dates)
 
-    def get_plot_vals(self):
+    def _get_plot_vals(self):
         fit = self.fit
         upper = fit.mu_total + 2*fit.sd_total
         lower = fit.mu_total - 2*fit.sd_total
         band_x = np.append(fit.index.values, fit.index.values[::-1])
         band_y = np.append(lower, upper[::-1])
-        xy_pred = [fit.index, fit.mu_total]
+        xy_pred = [fit.index, fit.mu_total, fit.sd_total]
         std_bounds = [band_x, band_y]
         train_data = [self.data_early.index, self.data_early['raw_y']]
         test_data = [self.data_later.index, self.data_later['raw_y']]
         return xy_pred, std_bounds, train_data, test_data
 
-    def plot_stock_data(self,show_split=False,raw_data=True,rg=None):
+    def _plot_stock_data(self,show_split=False,raw_data=True,rg=None):
         # If no range specified, assume whole thing
         if rg==None:
             rg=[self.start_date,self.end_date]

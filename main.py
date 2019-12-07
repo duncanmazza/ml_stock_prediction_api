@@ -12,16 +12,17 @@ from src.BayesReg import CashMoneySwag
 
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
-from bokeh.models import ColumnDataSource, Slider, TextInput
+from bokeh.models import ColumnDataSource, Slider, TextInput, Select
 from bokeh.plotting import figure
+
+
+# Select model type
+m_type = 'GPM'
 
 # Prep data
 cms = CashMoneySwag('AAPL')
 rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]
-cms.gen_test_train_data(start_date=rg[0],split_date=rg[1],end_date=rg[2])
-cms.train_gp()
-cms.predict_gp()
-xy_pred, std_bounds, train_data, test_data = cms.get_plot_vals()
+xy_pred, std_bounds, train_data, test_data = cms.go(start_date=rg[0],split_date=rg[1],end_date=rg[2])
 
 # Set up plot
 p = figure(plot_height=572, plot_width=900,
@@ -52,9 +53,10 @@ p.legend.location = "top_left"
 
 # Set up widgets
 text = TextInput(title="title", value='my time stretcher')
-start_date = TextInput(title="Start Date", value='2018-10-1')
-num_month_train = Slider(title="Number of months to train on", value=1, start=1, end=10, step=0.5)
-num_month_pred = Slider(title="Number of months to predict", value=1, start=1, end=5, step=0.5)
+start_date = TextInput(title="Start Date", value='2019-07-31')
+num_month_train = TextInput(title="Number of months to train on", value="2")
+num_month_pred = TextInput(title="Number of months to predict", value="1")
+model_type = Select(title="Model Type", options=["Combined","GPM","LSTM"], value="GPM")
 
 
 # Set up callbacks
@@ -67,18 +69,26 @@ def update_data(attrname, old, new):
 
     # Get the current slider values
     t_start = pd.to_datetime(start_date.value)
-    t_train = t_start + num_month_train.value*pd.Timedelta(15,"D")
-    t_pred = t_train + num_month_pred.value*pd.Timedelta(15,"D")
+    t_train = t_start + int(num_month_train.value)*pd.Timedelta(15,"D")
+    t_pred = t_train + int(num_month_pred.value)*pd.Timedelta(15,"D")
 
-for w in [text, start_date, num_month_train, num_month_pred]:
+    m_type = model_type.value
+
+    xy_pred, std_bounds, train_data, test_data = cms.go(t_start,t_train,t_pred)
+    sfit.data=dict(x=xy_pred[0], y=xy_pred[1])
+    bfit.data=dict(x=std_bounds[0], y=std_bounds[1])
+    defit.data=dict(x=train_data[0], y=train_data[1])
+    dlfit.data=dict(x=test_data[0], y=test_data[1])
+
+for w in [text, start_date, num_month_train, num_month_pred, model_type]:
     w.on_change('value', update_data)
 
 
 # Set up layouts and add to document
-inputs = column(text, start_date, num_month_train, num_month_pred)
+inputs = column(text, model_type, start_date, num_month_train, num_month_pred)
 
 curdoc().add_root(row(inputs, p, width=800))
-curdoc().title = "Sliders"
+curdoc().title = "Stock Price Predictions using the ML Stock Prediction API"
 
 # if __name__ == "__main__":
 #     x_train, y_train, x_pred, y_pred = func_of_dates(datetime(2017,10,1),datetime(2018,10,1),datetime(2019,10,1))
