@@ -263,11 +263,11 @@ class StockRNN(nn.Module):
         try:
             assert self.data_len >= 2 * self.sequence_segment_length
         except AssertionError:
-            print(BColors.FAIL + "The specified segment length for the data to be split up into, {}, would result in "
+            print("The specified segment length for the data to be split up into, {}, would result in "
                                  "a dataset of only one segment because the self.daily_stock_data array is of length {}"
                                  "; a minimum of 2 must be created for a train/test split (although there clearly needs"
                                  " to be more than 2 data points to train the model)."
-                  .format(self.sequence_segment_length, self.data_len + BColors.WHITE))
+                  .format(self.sequence_segment_length, self.data_len))
             raise AssertionError
 
         self.daily_stock_data = np.array(daily_stock_data)
@@ -425,8 +425,7 @@ class StockRNN(nn.Module):
         test_loss_list_idx = []
 
         if num_epochs <= 0:
-            print(BColors.FAIL + "Specified number of epochs is <= 0; it must be > 0, so it is set to 1."
-                  + BColors.WHITE)
+            print("Specified number of epochs is <= 0; it must be > 0, so it is set to 1.")
             num_epochs = 1
 
         while epoch_num <= num_epochs:
