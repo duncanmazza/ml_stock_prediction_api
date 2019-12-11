@@ -5,7 +5,6 @@ Code to train the RNN
 """
 
 from torch import Tensor
-from tests.BColors import BColors
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
@@ -22,8 +21,8 @@ import os
 ZERO_TIME = " 00:00:00"
 
 DEVICE = "cuda"  # selects the gpu to be used
-TO_GPU_FAIL_MSG = BColors.FAIL + "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
-                                 "that you have enabled the GPU your settings".format(DEVICE) + BColors.WHITE
+TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
+                                 "that you have enabled the GPU your settings".format(DEVICE)
 
 
 class StockRNN(nn.Module):
