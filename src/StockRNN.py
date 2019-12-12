@@ -546,7 +546,8 @@ class StockRNN(nn.Module):
             plt.legend()
             plt.show()
 
-    def make_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2, plt_scl=8):
+    def make_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2,
+                                        data_start_indices: np.ndarray = None):
         r"""
         Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out. The sequence length
         of the data passed to the forward pass is given by ``self.sequence_segment_length - predict_beyond``, and the
@@ -558,7 +559,8 @@ class StockRNN(nn.Module):
         """
         # self.eval()  # equivalent to calling self.train(False)
         forward_seq_len = self.sequence_segment_length + predict_beyond
-        data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - forward_seq_len, num_plots)
+        if data_start_indices is None:
+            data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - forward_seq_len, num_plots)
 
         start_dates = []
         end_dates = []
@@ -570,54 +572,74 @@ class StockRNN(nn.Module):
             start_dates.append(self.companies[0].get_date_at_index(data_start_indices[i]))
             end_dates.append(self.companies[0].get_date_at_index(data_start_indices[i] + forward_seq_len))
             pred_data_start_indicies.append(data_start_indices[i] + forward_seq_len - predict_beyond)
+
         output = self.forward(make_pred_data[:, :, :-(predict_beyond + 1)], predict_beyond)
         output_numpy = output.detach().numpy()
+
+        pred_beyond_plot_indices = np.arange(self.sequence_segment_length, forward_seq_len)
+        pred_over_input_plot_indices = np.arange(1, self.sequence_segment_length)
+        input_plot_indices = np.arange(0, self.sequence_segment_length)
+        disparity_plot_indices = np.arange(1, predict_beyond + 1)
+
+        orig_stock_list = []
+        pred_stock_list = []
+        actual_stock_list = []
+        disparity_list = []
+        for i in range(num_plots):
+            orig_stock_list.append(self.companies[0].data_frame["Close"].iloc[
+                                       list(range(data_start_indices[i], pred_data_start_indicies[i], 1))])
+            pred_stock_list.append(
+                self.companies[0].reconstruct_stock_from_percent_change(output_numpy[i, 0, -predict_beyond:],
+                                                                        initial_condition_index=(
+                                                                                pred_data_start_indicies[
+                                                                                    i] - 1))[1:])
+            actual_stock_list.append(self.companies[0].data_frame["Close"].iloc[
+                list(range(pred_data_start_indicies[i], pred_data_start_indicies[i] + predict_beyond))])
+            disparity_list.append(np.abs(pred_stock_list[i] - actual_stock_list[i]))
+
+        return forward_seq_len, data_start_indices, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
+               output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
+               disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list
+
+    def plot_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2, plt_scl=8):
+        forward_seq_len, data_start_indices, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
+        output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
+        disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
+            self.make_prediction_with_validation(predict_beyond, num_plots)
+
         _, axes = plt.subplots(num_plots, 3, figsize=(plt_scl, plt_scl))
         for ax in range(num_plots):
-            axes[ax][0].plot(np.arange(self.sequence_segment_length, forward_seq_len),
-                             output_numpy[ax, 0, -predict_beyond:], color='green', label="pred. beyond",
+            axes[ax][0].plot(pred_beyond_plot_indices, output_numpy[ax, 0, -predict_beyond:], color='green',
+                             label="pred. beyond",
                              linestyle='--', marker='o')
-            axes[ax][0].plot(np.arange(1, self.sequence_segment_length),
-                             output_numpy[ax, 0, :self.sequence_segment_length - 1], color='gray',
+            axes[ax][0].plot(pred_over_input_plot_indices, output_numpy[ax, 0, :self.sequence_segment_length - 1],
+                             color='gray',
                              label="pred. over input", linestyle='--', marker='o')
-            axes[ax][0].plot(np.arange(0, self.sequence_segment_length),
+            axes[ax][0].plot(input_plot_indices,
                              make_pred_data.detach().numpy()[ax, 0, :self.sequence_segment_length], color='red',
                              label="input", linestyle='-', marker='o')
-            axes[ax][0].plot(np.arange(self.sequence_segment_length, forward_seq_len),
+            axes[ax][0].plot(pred_beyond_plot_indices,
                              make_pred_data.detach().numpy()[ax, 0, self.sequence_segment_length:], label="actual",
                              linestyle='-', marker='o')
-
             axes[ax][0].set_title("{} % change from\n{} to {}".format(self.companies[0].ticker,
                                                                       start_dates[ax], end_dates[ax]))
             axes[ax][0].set_xlabel("Business days since {}".format(start_dates[ax]))
             axes[ax][0].set_ylabel("% Change")
             axes[ax][0].legend()
-
-            pred_stock = self.companies[0].reconstruct_stock_from_percent_change(output_numpy[ax, 0, -predict_beyond:],
-                                                                                 initial_condition_index=(
-                                                                                             pred_data_start_indicies[
-                                                                                                 ax] - 1))[1:]
-            axes[ax][1].plot(np.arange(self.sequence_segment_length, forward_seq_len), pred_stock, color="green",
+            axes[ax][1].plot(pred_beyond_plot_indices, pred_stock_list[ax], color="green",
                              label="pred. beyond", linestyle='--', marker='o')
-            orig_stock = self.companies[0].data_frame["Close"].iloc[
-                list(range(data_start_indices[ax], pred_data_start_indicies[ax], 1))]
-            axes[ax][1].plot(np.arange(0, self.sequence_segment_length), orig_stock, color='red', label="input",
-                             linestyle='-', marker='o')
-            actual_stock = self.companies[0].data_frame["Close"].iloc[
-                list(range(pred_data_start_indicies[ax], pred_data_start_indicies[ax] + predict_beyond))]
-            axes[ax][1].plot(np.arange(self.sequence_segment_length, forward_seq_len), actual_stock, label="actual",
-                             linestyle='-', marker='o')
-            axes[ax][1].set_title("{} stock from\n{} to {}".format(self.companies[0].ticker, start_dates[ax], end_dates[ax]))
+            axes[ax][1].plot(input_plot_indices, orig_stock_list[ax], color='red', label="input", linestyle='-', marker='o')
+            axes[ax][1].plot(pred_beyond_plot_indices, actual_stock_list[ax], label="actual", linestyle='-', marker='o')
+            axes[ax][1].set_title("{} stock from\n{} to {}".format(self.companies[0].ticker, start_dates[ax],
+                                                                   end_dates[ax]))
             axes[ax][1].set_xlabel("Business days since {}".format(start_dates[ax]))
             axes[ax][1].set_ylabel("$")
             axes[ax][1].legend()
-
-            axes[ax][2].plot(np.arange(1, predict_beyond+1), np.abs(pred_stock - actual_stock), label="disparity",
+            axes[ax][2].plot(disparity_plot_indices, disparity_list[ax], label="disparity",
                              linestyle="", marker="o")
             axes[ax][2].set_title("Disparity of Predicted and Actual Stock")
             axes[ax][2].set_xlabel("Num. predicted days out {}".format(start_dates[ax]))
             axes[ax][2].set_ylabel("Absolute difference between prediction and reality")
-
         plt.show()
 
 
@@ -641,6 +663,6 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    model.do_training(num_epochs=100)
+    # model.do_training(num_epochs=100)
 
-    model.make_prediction_with_validation()
+    model.plot_prediction_with_validation()
