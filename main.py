@@ -19,7 +19,7 @@ from bokeh.plotting import figure
 m_type = 'GPM'
 
 # Prep data
-wc = WomboCombo(ticker='AAPL', comp_tickers=["HPE", "XRX", "ACN", "ORCL"])
+wc = WomboCombo(mean_weight = 0.5, ticker='AAPL', comp_tickers=["GOOGL", "MSFT", "MSI"])
 rg=[datetime(2019,7,31),datetime(2019,10,1),datetime(2019,10,31)]
 wc.train(rg[0], rg[1], rg[2])
 
