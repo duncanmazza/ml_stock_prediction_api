@@ -124,6 +124,11 @@ class Company:
         return data_frame
 
     def return_dummy_data(self):
+        """
+        Creates linear stock data as dummy data for testing a model
+
+        :return: numpy array of dummy data
+        """
         return DataFrame({"Date" : [i for i in range(200)], "Close" : [i for i in range(200)]})
 
     def revise_start_date(self, new_start_date: datetime):
@@ -200,6 +205,11 @@ class Company:
         #     return self.moving_average(percent_change, n=rolling_avg_length)
 
     def get_date_at_index(self, i):
+        """
+        Returns the datetime object at index
+
+        :param i: index to return the date of
+        """
         return self.data_frame["Date"].iloc[[i]].values[0]
 
     @staticmethod
@@ -220,6 +230,12 @@ class Company:
         return ret[n - 1:] / n
 
     def reconstruct_stock_from_percent_change(self, percent_change_vec: np.ndarray, initial_condition_index: int):
+        """
+        Reconstruct the stock prices from percent change
+
+        :param percent_change_vec: vector of percent changes
+        :param initial_condition_index: index of initial condition for the % change
+        """
         len_percent_change_vec = len(percent_change_vec)
         stock_price = np.zeros((len_percent_change_vec + 1))
         stock_price[0] = self.data_frame["Close"].iloc[[initial_condition_index]]
