@@ -609,10 +609,6 @@ class StockRNN(nn.Module):
         if end_pred_index >= self.data_len:
             print("WARNING: latest_data_index is too large for dataset; revising to largest possible value")
             end_pred_index = self.data_len - 1
-        if end_pred_index > self.data_len - self.sequence_segment_length:
-            print("WARNING: latest_data_index is too large for a real value to be pulled from the dataset to compare; "
-                  "will return -1 as the actual data point")
-
         return end_pred_index
 
     def generate_predicted_distribution(self, end_pred_index: int = None, pred_beyond_range: (int, int) = (1, 10)):
@@ -624,9 +620,12 @@ class StockRNN(nn.Module):
         predicted_value_list = []
         debug = []
         for i in range(pred_beyond_range[0], pred_beyond_range[1]):
+            # the start of the desired index is the end value index decreased by the length of the prediction and the
+            # training sequence length; the start index is then shifted back as the number of days that is predicted
+            # beyond increases
             _, _, _, _, _, _, _, pred_stock_list, actual_stock_list, _ = self.make_prediction_with_validation(i,
-                            num_plots=1, data_start_indices=np.array([end_pred_index - pred_beyond_range_delta - i -
-                                                                      self.sequence_segment_length]))
+                            num_plots=1, data_start_indices=np.array([end_pred_index - self.sequence_segment_length -
+                                                                      pred_beyond_range_delta - i]))
             predicted_value_list.append(pred_stock_list[0][-1])
             debug.append(actual_stock_list[0][-1])
         return predicted_value_list, actual_stock_list[0][-1]
