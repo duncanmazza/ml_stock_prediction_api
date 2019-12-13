@@ -8,4 +8,7 @@ A Gaussian Process (GP) model uses a Bayesian regression approach. This method m
 3. Periodic Kernel for medium length periodic behavior.
 4. White Noise and Matern32 kernels as noise modelers.
 
-Each of these kernels can be described in further detail by hyper-parameter distributions. These are plotted in Figure~\ref{fig:gpmpriors}.
+Each of these kernels can be described in further detail by hyper-parameter distributions. The plots of these distributions are shown below:
+
+.. image:: ../../imgs/gpmexperpriors.png
+.. image:: ../../imgs/gpmexscalepriors.png
