@@ -8,7 +8,8 @@ apt-get install sphinx
 From the `docs/` directory:
 ```shell script
 sphinx-apidoc -f -o source/_build/ ../
-make html
+make html  # local build
+make github  # deployment build
 ```
 
 Open the documentation using:
