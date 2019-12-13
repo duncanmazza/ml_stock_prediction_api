@@ -8,7 +8,7 @@ TODO: finish README
 
 Install requirements:
 ```shell script
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 **Make sure that you are using Python 3.6 or later!** Our code is not backward compatable because we make use of type declarations in 3.6.
