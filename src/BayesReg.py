@@ -41,7 +41,7 @@ class CashMoneySwag():
         self.test_end = end_date
         self.split_date=split_date
         start_idx = self.data.index.searchsorted(start_date)
-        sep_idx = self.data.index.searchsorted(split_date) # Y-M-D
+        sep_idx = self.data.index.searchsorted(split_date)+1 # Y-M-D
         end_idx = self.data.index.searchsorted(end_date)
         self.data_early = self.data.iloc[start_idx:sep_idx, :]
         self.data_later = self.data.iloc[sep_idx:end_idx+1, :]
@@ -89,7 +89,7 @@ class CashMoneySwag():
 
     def _predict_gp(self):
         # predict at a 15 day granularity
-        dates = pd.date_range(start=self.train_start, end=self.test_end, freq="5D")
+        dates = pd.date_range(start=self.train_start, end=self.test_end, freq="1D")
         tnew = self._dates_to_idx(dates)[:,None]
         std_y=np.std(self.data['raw_y'].values)
         first_y=self.data['raw_y'][0]
