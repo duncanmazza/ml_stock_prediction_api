@@ -625,7 +625,8 @@ class StockRNN(nn.Module):
         debug = []
         for i in range(pred_beyond_range[0], pred_beyond_range[1]):
             _, _, _, _, _, _, _, pred_stock_list, actual_stock_list, _ = self.make_prediction_with_validation(i,
-                            num_plots=1, data_start_indices=np.array([end_pred_index - pred_beyond_range_delta - i]))
+                            num_plots=1, data_start_indices=np.array([end_pred_index - pred_beyond_range_delta - i -
+                                                                      self.sequence_segment_length]))
             predicted_value_list.append(pred_stock_list[0][-1])
             debug.append(actual_stock_list[0][-1])
         return predicted_value_list, actual_stock_list[0][-1]

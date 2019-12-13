@@ -57,7 +57,7 @@ class WomboCombo:
             print(TO_GPU_FAIL_MSG)
             self.srnn.__togpu__(False)
 
-        self.srnn.do_training(num_epochs=100)
+        self.srnn.do_training(num_epochs=1)
         self.m_srnn, self.std_srnn = self.srnn.pred_in_conj(p_st_idx, n_days_pred)
         self.times = srdf.Date.iloc[raw_p_st_idx:]
 
