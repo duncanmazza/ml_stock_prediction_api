@@ -25,22 +25,22 @@ TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Coll
                   "that you have enabled the GPU your settings".format(DEVICE)
 
 
-class Rescaler:
-    def __init__(self, min_val, max_val):
-        self.min_val = min_val
-        self.max_val = max_val
-        self.train_max = 0
-        self.train_min = 0
-
-    def rescale_train(self, train_data):
-        self.train_max = np.max(train_data)
-        self.train_min = np.min(train_data)
-        return (self.max_val - self.min_val) * (train_data - self.train_min) / (self.train_max - self.train_min) + \
-               self.min_val
-
-    def rescale_test(self, test_data):
-        return (self.max_val - self.min_val) * (test_data - self.train_min) / (self.train_max - self.train_min) + \
-               self.min_val
+# class Rescaler:
+#     def __init__(self, min_val, max_val):
+#         self.min_val = min_val
+#         self.max_val = max_val
+#         self.train_max = 0
+#         self.train_min = 0
+#
+#     def rescale_train(self, train_data):
+#         self.train_max = np.max(train_data)
+#         self.train_min = np.min(train_data)
+#         return (self.max_val - self.min_val) * (train_data - self.train_min) / (self.train_max - self.train_min) + \
+#                self.min_val
+#
+#     def rescale_test(self, test_data):
+#         return (self.max_val - self.min_val) * (test_data - self.train_min) / (self.train_max - self.train_min) + \
+#                self.min_val
 
 
 class StockRNN(nn.Module):
@@ -53,7 +53,7 @@ class StockRNN(nn.Module):
     test_loader: DataLoader
 
     def __init__(self, ticker: str, lstm_hidden_size: int = 100, lstm_num_layers: int = 2, to_compare: [str, ] = None,
-                 start_date: datetime = datetime(2017, 1, 1), end_date: datetime = datetime(2018, 1, 1),
+                 train_start_date: datetime = datetime(2017, 1, 1), train_end_date: datetime = datetime(2018, 1, 1),
                  sequence_segment_length: int = 50, drop_prob: float = 0.5, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
                  train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 30,
@@ -65,8 +65,8 @@ class StockRNN(nn.Module):
         :param lstm_num_layers:
         :param ticker:
         :param to_compare:
-        :param start_date:
-        :param end_date:
+        :param train_start_date:
+        :param train_end_date:
         :param sequence_segment_length:
         :param drop_prob:
         :param device:
@@ -90,8 +90,8 @@ class StockRNN(nn.Module):
         self.drop_prob = drop_prob
         self.device = device
         self.ticker = ticker
-        self.start_date = start_date
-        self.end_date = end_date
+        self.train_start_date = train_start_date
+        self.train_end_date = train_end_date
         self.sequence_segment_length = sequence_segment_length
         self.auto_populate = auto_populate
         self.train_data_prop = train_data_prop
@@ -110,7 +110,7 @@ class StockRNN(nn.Module):
             self.label_length = label_length
 
         # company in index 0 is the company whose stock is being predicted
-        self.companies = [Company(self.ticker, self.start_date, self.end_date)]
+        self.companies = [Company(self.ticker, self.train_start_date, self.train_end_date)]
 
         start_date_changes = []
         end_date_changes = []
@@ -118,7 +118,7 @@ class StockRNN(nn.Module):
             to_compare.sort()
             for company_ticker in to_compare:
                 try:
-                    self.companies.append(Company(company_ticker, self.start_date, self.end_date))
+                    self.companies.append(Company(company_ticker, self.train_start_date, self.train_end_date))
                 except KeyError:
                     print("There was a KeyError exception raised when accessing data for the ticker {}; will skip this "
                           "ticker".format(company_ticker))
@@ -140,22 +140,22 @@ class StockRNN(nn.Module):
         self.num_companies = len(self.companies)
 
         if len(start_date_changes) != 0:  # revise the start date of all of the data if necessary
-            self.start_date = max(start_date_changes)
+            self.train_start_date = max(start_date_changes)
             for company in self.companies:
-                company.revise_start_date(self.start_date)
+                company.revise_start_date(self.train_start_date)
             print("Data did not exist for every ticker at start date of {}; revising to the most recent starting time "
-                  "(common among all companies' data) of {}".format(start_date.__str__().strip(ZERO_TIME),
-                                                                    self.start_date.__str__().strip(ZERO_TIME)))
+                  "(common among all companies' data) of {}".format(train_start_date.__str__().strip(ZERO_TIME),
+                                                                    self.train_start_date.__str__().strip(ZERO_TIME)))
         # revise the end date of all of the data
         if len(end_date_changes) != 0:
-            self.end_date = min(end_date_changes)
+            self.train_end_date = min(end_date_changes)
             for company in self.companies:
-                company.revise_end_date(self.end_date)
+                company.revise_end_date(self.train_end_date)
             print("Data did not exist for every ticker at end date of {}; revising to the earliest ending time "
-                  "(common among all companies' data) of {}".format(end_date.__str__().strip(ZERO_TIME),
-                                                                    self.end_date.__str__().strip(ZERO_TIME)))
-        self.start_date_str = self.start_date.__str__().strip(ZERO_TIME)
-        self.end_date_str = self.end_date.__str__().strip(ZERO_TIME)
+                  "(common among all companies' data) of {}".format(train_end_date.__str__().strip(ZERO_TIME),
+                                                                    self.train_end_date.__str__().strip(ZERO_TIME)))
+        self.start_date_str = self.train_start_date.__str__().strip(ZERO_TIME)
+        self.end_date_str = self.train_end_date.__str__().strip(ZERO_TIME)
 
         # sting that describes the parameters for this model such that files for weights can be successfully loaded
         if self.num_companies > 1:
@@ -181,7 +181,7 @@ class StockRNN(nn.Module):
         self.fc_1 = nn.Linear(self.lstm_hidden_size, 10)
         self.fc_2 = nn.Linear(10, self.num_companies)
         self.tanh = nn.Tanh()
-        self.rescaler = Rescaler(-0.5, 0.5)
+        # self.rescaler = Rescaler(-0.5, 0.5)
 
         # initialize attributes with placeholder arrays
         self.daily_stock_data = np.array(0)
@@ -192,7 +192,8 @@ class StockRNN(nn.Module):
         self.data_len = 0
 
         # initialize optimizer and loss
-        self.loss = nn.MSELoss(size_average=True)
+        self.loss = nn.MSELoss()
+
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.auto_populate:
@@ -601,7 +602,47 @@ class StockRNN(nn.Module):
                output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
                disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list
 
-    def plot_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2, plt_scl=8):
+    def generate_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+        r"""
+
+        """
+        if latest_data_index is None:
+            print("latest_data_index is None, so will set to minimum possible value")
+            latest_data_index = self.sequence_segment_length + pred_beyond_range[1]
+        if latest_data_index - (self.sequence_segment_length + (pred_beyond_range[1] - pred_beyond_range[0])) < 0:
+            print("WARNING: latest_data_index, when combined with the provided pred_beyond_range, will yield negative"
+                  "indices for training data start points; revising to smallest possible value")
+            latest_data_index = self.sequence_segment_length + pred_beyond_range[1]
+        if latest_data_index > self.data_len:
+            print("WARNING: latest_data_index is too large for dataset; revising to largest possible value")
+            latest_data_index = self.data_len
+        if latest_data_index > self.data_len - self.sequence_segment_length:
+            print("WARNING: latest_data_index is too large for a real value to be pulled from the dataset to compare; "
+                  "will return -1 as the actual data point")
+
+        predicted_value_list = []
+        for i in range(pred_beyond_range[0], pred_beyond_range[1]):
+            _, _, _, _, _, _, _, _, _, _, _, _, pred_stock_list, _, _ = self.make_prediction_with_validation(i,
+                num_plots=1, data_start_indices=np.array([latest_data_index - (pred_beyond_range[1] - i)]))
+            predicted_value_list.append(pred_stock_list[0][-1])
+        actual_value_index = latest_data_index + pred_beyond_range[0]
+        if actual_value_index > self.data_len:
+            actual_value = -1  # arbitrary value since it can't be procured from the dataset
+        else:
+            actual_value = self.companies[0].data_frame["Close"].iloc[[actual_value_index]].values[0]
+        return predicted_value_list, actual_value
+
+    def plot_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 30)):
+        predicted_value_list, actual_value = self.generate_predicted_distribution(latest_data_index, pred_beyond_range)
+        n_bins = round((pred_beyond_range[1] - pred_beyond_range[0]) / 3)
+        if n_bins < 3:
+            n_bins = 3
+        plt.hist(predicted_value_list, bins=n_bins, color="green")
+        if actual_value != -1:
+            plt.plot([actual_value, actual_value], [0, pred_beyond_range[1] - pred_beyond_range[0]], "-")
+        plt.show()
+
+    def plot_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 5, plt_scl=20):
         forward_seq_len, data_start_indices, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
         output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
         disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
@@ -639,7 +680,7 @@ class StockRNN(nn.Module):
                              linestyle="", marker="o")
             axes[ax][2].set_title("Disparity of Predicted and Actual Stock")
             axes[ax][2].set_xlabel("Num. predicted days out {}".format(start_dates[ax]))
-            axes[ax][2].set_ylabel("Absolute difference between prediction and reality")
+            axes[ax][2].set_ylabel("Absolute difference between\nprediction and reality")
         plt.show()
 
 
@@ -649,8 +690,8 @@ if __name__ == "__main__":
     # set to switch between loading saved weights if available
     try_load_weights = True
 
-    model = StockRNN("IBM", to_compare=["HPE", "XRX", "ACN", "ORCL"], start_date=datetime(2012, 1, 1),
-                     end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
+    model = StockRNN("IBM", to_compare=["HPE", "XRX", "ACN", "ORCL"], train_start_date=datetime(2012, 1, 1),
+                     train_end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
     # model = StockRNN("dummy")
     # model.peek_dataset()
 
@@ -663,6 +704,7 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    # model.do_training(num_epochs=100)
+    model.do_training(num_epochs=100)
 
     model.plot_prediction_with_validation()
+    # model.plot_predicted_distribution()
