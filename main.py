@@ -8,21 +8,24 @@ in your browser.
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from src.BayesReg import CashMoneySwag
+from src.CombinedModel import WomboCombo
 
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
 from bokeh.models import ColumnDataSource, Slider, TextInput, Select, BoxAnnotation
 from bokeh.plotting import figure
 
-
 # Select model type
 m_type = 'GPM'
 
 # Prep data
-cms = CashMoneySwag('AAPL')
-rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]
-xy_pred, std_bounds, train_data, test_data = cms.go(start_date=rg[0],split_date=rg[1],end_date=rg[2])
+wc = WomboCombo(ticker='AAPL', comp_tickers=["HPE", "XRX", "ACN", "ORCL"])
+rg=[datetime(2019,7,31),datetime(2019,10,1),datetime(2019,10,31)]
+wc.train(rg[0], rg[1], rg[2])
+
+# # Prep data
+# cms = CashMoneySwag('AAPL')
+# xy_pred, std_bounds, train_data, test_data = cms.go(start_date=rg[0],split_date=rg[1],end_date=rg[2])
 
 # Set up plot
 p = figure(plot_height=572, plot_width=900,
@@ -32,22 +35,36 @@ p.yaxis.axis_label = 'money'
 p.xaxis.axis_label = 'time'
 
 # Set up source data
-sfit = ColumnDataSource(data=dict(x=xy_pred[0], y=xy_pred[1]))
-bfit = ColumnDataSource(data=dict(x=std_bounds[0], y=std_bounds[1]))
-defit = ColumnDataSource(data=dict(x=train_data[0], y=train_data[1]))
-dlfit = ColumnDataSource(data=dict(x=test_data[0], y=test_data[1]))
+wc_mfit = ColumnDataSource(data=dict(x=wc.combo_vals[0][0],y=wc.combo_vals[0][1]))
+wc_sdfit = ColumnDataSource(data=dict(x=wc.combo_vals[1][0],y=wc.combo_vals[1][1]))
+nn_mfit = ColumnDataSource(data=dict(x=wc.srnn_vals[0][0],y=wc.srnn_vals[0][1]))
+nn_sdfit = ColumnDataSource(data=dict(x=wc.srnn_vals[1][0],y=wc.srnn_vals[1][1]))
+gp_mfit = ColumnDataSource(data=dict(x=wc.cms_vals[0][0],y=wc.cms_vals[0][1]))
+gp_sdfit = ColumnDataSource(data=dict(x=wc.cms_vals[1][0],y=wc.cms_vals[1][1]))
+gp_tdfit = ColumnDataSource(data=dict(x=wc.cms_vals[2][0],y=wc.cms_vals[2][1]))
+gp_adfit = ColumnDataSource(data=dict(x=wc.cms_vals[3][0],y=wc.cms_vals[3][1]))
 
 # Plot total fit
-p.line('x','y',source=sfit,
-       line_width=1, line_color="firebrick", legend="Total fit")
-p.patch('x', 'y',source=bfit,
-        color="firebrick", alpha=0.6, line_color="white")
+wc_m=p.line('x','y',source=wc_mfit,
+            line_width=1, line_color="forestgreen", legend="Total fit")
+wc_sd=p.patch('x', 'y',source=wc_sdfit,
+              color="forestgreen", alpha=0.6, line_color="white")
+
+nn_m=p.line('x','y',source=nn_mfit,
+            line_width=1, line_color="dodgerblue", legend="Total fit")
+nn_sd=p.patch('x', 'y',source=nn_sdfit,
+              color="dodgerblue", alpha=0.6, line_color="white")
+
+gp_m=p.line('x','y',source=gp_mfit,
+            line_width=1, line_color="firebrick", legend="Total fit")
+gp_sd=p.patch('x', 'y',source=gp_sdfit,
+              color="firebrick", alpha=0.6, line_color="white")
 
 # Plot true value
-p.circle('x','y',source=defit,
-         color="black", legend="Training data")
-p.circle('x','y',source=dlfit,
-         color="yellow", legend="Test data")
+td=p.circle('x','y',source=gp_tdfit,
+            color="black", legend="Training data")
+ad=p.circle('x','y',source=gp_adfit,
+            color="yellow", legend="Test data")
 # predict_region = BoxAnnotation(left=rg[1],
 #                                fill_alpha=0.1, fill_color="yellow")
 # p.add_layout(predict_region)
@@ -72,16 +89,21 @@ def update_data(attrname, old, new):
     # Get the current slider values
     t_start = pd.to_datetime(start_date.value)
     t_train = t_start + float(num_month_train.value)*pd.Timedelta(30,"D")
-    t_pred = t_train + float(num_month_pred.value)*pd.Timedelta(30,"D")
+    pred_start = t_train + pd.Timedelta(1, "D")
+    pred_end = pred_start + float(num_month_pred.value)*pd.Timedelta(30,"D")
 
     m_type = model_type.value
 
-    xy_pred, std_bounds, train_data, test_data = cms.go(t_start,t_train,t_pred)
-    sfit.data=dict(x=xy_pred[0], y=xy_pred[1])
-    bfit.data=dict(x=std_bounds[0], y=std_bounds[1])
-    defit.data=dict(x=train_data[0], y=train_data[1])
-    dlfit.data=dict(x=test_data[0], y=test_data[1])
-    BoxAnnotation.left = t_train
+    # xy_pred, std_bounds, train_data, test_data = cms.go(t_start,t_train,t_pred)
+    wc.train(t_start, pred_start, pred_end)
+    wc_mfit = ColumnDataSource(data=dict(x=wc.combo_vals[0][0],y=wc.combo_vals[0][1]))
+    wc_sdfit = ColumnDataSource(data=dict(x=wc.combo_vals[1][0],y=wc.combo_vals[1][1]))
+    nn_mfit = ColumnDataSource(data=dict(x=wc.srnn_vals[0][0],y=wc.srnn_vals[0][1]))
+    nn_sdfit = ColumnDataSource(data=dict(x=wc.srnn_vals[1][0],y=wc.srnn_vals[1][1]))
+    gp_mfit = ColumnDataSource(data=dict(x=wc.cms_vals[0][0],y=wc.cms_vals[0][1]))
+    gp_sdfit = ColumnDataSource(data=dict(x=wc.cms_vals[1][0],y=wc.cms_vals[1][1]))
+    gp_tdfit = ColumnDataSource(data=dict(x=wc.cms_vals[2][0],y=wc.cms_vals[2][1]))
+    gp_adfit = ColumnDataSource(data=dict(x=wc.cms_vals[3][0],y=wc.cms_vals[3][1]))
 
 for w in [text, start_date, num_month_train, num_month_pred, model_type]:
     w.on_change('value', update_data)
