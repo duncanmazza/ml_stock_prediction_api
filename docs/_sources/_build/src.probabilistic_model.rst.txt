@@ -1,0 +1,22 @@
+src.probabilistic\_model package
+================================
+
+Submodules
+----------
+
+src.probabilistic\_model.prob\_train module
+-------------------------------------------
+
+.. automodule:: src.probabilistic_model.prob_train
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: src.probabilistic_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
