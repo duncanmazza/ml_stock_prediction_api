@@ -10,7 +10,7 @@ in your browser.
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from src.CombinedModel import WomboCombo
+from src.CombinedModel import CombinedModel
 
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # Prep data
     # Will run all three models at once.
-    wc = WomboCombo(ticker='AAPL', comp_tickers=["GOOGL", "MSFT", "MSI"])
+    wc = CombinedModel(ticker='AAPL', comp_tickers=["GOOGL", "MSFT", "MSI"])
     rg=[datetime(2019,5,31),datetime(2019,10,1),datetime(2019,10,31)]
     wc.train(rg[0], rg[1], rg[2], mw=0.5, n_epochs=51)
 

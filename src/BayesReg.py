@@ -11,7 +11,7 @@ import warnings
 import theano.tensor as tt
 from src.get_data import Company
 
-class CashMoneySwag():
+class GPM():
     r"""
     Class encapsulating Gaussian Process model implementation. Depends on the PyMC3 library.
     """
@@ -231,7 +231,7 @@ class CashMoneySwag():
 
 
 # if __name__ == "__main__":
-#     cms = CashMoneySwag('AAPL')
+#     cms = GPM('AAPL')
 #     rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]
 #     cms.gen_test_train_data(start_date=rg[0],split_date=rg[1],end_date=rg[2])
 #     cms.train_gp()

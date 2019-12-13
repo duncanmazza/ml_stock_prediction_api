@@ -4,7 +4,7 @@ Code for the combined model approach.
 @author: Shashank Swaminathan
 """
 
-from src.BayesReg import CashMoneySwag
+from src.BayesReg import GPM
 from src.StockRNN import StockRNN
 import pandas as pd
 import numpy as np
@@ -17,13 +17,13 @@ DEVICE = "cuda"  # selects the gpu to be used
 TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
                   "that you have enabled the GPU your settings".format(DEVICE)
 
-class WomboCombo:
+class CombinedModel:
     r"""
     Class for handling combined model operations.
     """
     def __init__(self, ticker, comp_tickers):
         r"""
-        init function. It will set up the StockRNN and CashMoneySwag classes.
+        init function. It will set up the StockRNN and GPM classes.
 
         :param ticker: Ticker of stocks to predict
         :param comp_tickers: List of tickers to compare desired ticker against. Used for StockRNN only.
@@ -32,7 +32,7 @@ class WomboCombo:
                              train_start_date=datetime(2012, 1, 1),
                              train_end_date=datetime.today(),
                              try_load_weights=False)
-        self.cms = CashMoneySwag(ticker)
+        self.cms = GPM(ticker)
 
     def train(self, start_date, pred_start, pred_end, mw=0.5, n_epochs=10):
         r"""
@@ -121,7 +121,7 @@ class WomboCombo:
 
     def _cms_train(self, start_date, train_end, pred_end):
         r"""
-        Helper function to train the GP model using the CashMoneySwag class. Sets attribute cms_vals equal to result. Result is of form: ([time, mean prediction], [time, upper/lower bounds], [time, actual data prior to prediction], [time, actual data during prediction]).
+        Helper function to train the GP model using the GPM class. Sets attribute cms_vals equal to result. Result is of form: ([time, mean prediction], [time, upper/lower bounds], [time, actual data prior to prediction], [time, actual data during prediction]).
 
         :param start_date: Training start date (for GP model only). Provide as datetime object.
         :param train_end: Date to end training. Provide as datetime object.
