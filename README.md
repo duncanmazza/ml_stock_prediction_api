@@ -13,6 +13,15 @@ pip install -r requirements.txt
 
 **Make sure that you are using Python 3.6 or later!** Our code is not backward compatable because we make use of type declarations in 3.6.
 
+
+
+The API is interactive, and runs off of a Bokeh server. To run it, open terminal and move to the root of the tool. Then, run the following line::
+
+	bokeh serve --show .
+
+This will open a server on http://localhost:5006/ml_stock_prediction_api. Open this link in your browser to access the API.
+
+
 To run the LSTM code, run:
 ```shell script
 python src/StockRNN.py
