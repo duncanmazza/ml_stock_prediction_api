@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>moneymaker &mdash; Stock Prediction API  documentation</title>
+  <title>Understanding the GPM &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -35,8 +35,8 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="main module" href="main.html" />
-    <link rel="prev" title="Examples" href="../notes/examples.html" /> 
+    <link rel="next" title="The approach to combining models" href="combined.html" />
+    <link rel="prev" title="Understanding the LSTM" href="LSTM.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -81,21 +81,16 @@
             
             
               <p class="caption"><span class="caption-text">Notes</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../notes/LSTM.html">Understanding the LSTM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/GPM.html">Understanding the GPM</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/combined.html">The approach to combining models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/examples.html">Examples</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="combined.html">The approach to combining models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">moneymaker</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="main.html">main module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html">src package</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tests.html">tests package</a></li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -141,13 +136,13 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>moneymaker</li>
+      <li>Understanding the GPM</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/_build/modules.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/notes/GPM.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -160,31 +155,16 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="moneymaker">
-<h1>moneymaker<a class="headerlink" href="#moneymaker" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="main.html">main module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="src.html">src package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="src.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src.BayesReg">src.BayesReg module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src.CombinedModel">src.CombinedModel module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src.StockRNN">src.StockRNN module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src.get_data">src.get_data module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src.prob_train">src.prob_train module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-src">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">tests package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tests.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tests.html#module-tests.BColors">tests.BColors module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tests.html#module-tests.test_get_data">tests.test_get_data module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tests.html#module-tests.test_rnn">tests.test_rnn module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tests.html#module-tests">Module contents</a></li>
-</ul>
-</li>
-</ul>
-</div>
+  <div class="section" id="understanding-the-gpm">
+<h1>Understanding the GPM<a class="headerlink" href="#understanding-the-gpm" title="Permalink to this headline">¶</a></h1>
+<p>A Gaussian Process (GP) model uses a Bayesian regression approach. This method models the data by considering an infinite function space. It gives a probability to every function within this infinite space, corresponding to how likely the function is to model the data. Since representing an infinite function space is computationally intractable, we use Gaussian Processes to represent the distribution of functions over an infinite domain. We utilized 3 GPs in our model, each with a covariance function chosen to cover specific behavior we wanted from our model. The chosen covariance kernels are listed below:
+1. Exponentiated Quadratic Kernel for long-term steady growth.
+2. Rational Kernel for short to medium length fluctuations.
+3. Periodic Kernel for medium length periodic behavior.
+4. White Noise and Matern32 kernels as noise modelers.</p>
+<p>Each of these kernels can be described in further detail by hyper-parameter distributions. The plots of these distributions are shown below:</p>
+<img alt="../_images/gpmexperpriors.png" src="../_images/gpmexperpriors.png" />
+<img alt="../_images/gpmexscalepriors.png" src="../_images/gpmexscalepriors.png" />
 </div>
 
 
@@ -195,10 +175,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="main.html" class="btn btn-neutral float-right" title="main module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="combined.html" class="btn btn-neutral float-right" title="The approach to combining models" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../notes/examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="LSTM.html" class="btn btn-neutral float-left" title="Understanding the LSTM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

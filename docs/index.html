@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Welcome to Moneymaker’s documentation! &mdash; Moneymaker  documentation</title>
+  <title>Welcome to the Stock Prediction API documentation &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="About" href="notes/about.html" /> 
+    <link rel="next" title="Understanding the LSTM" href="notes/LSTM.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -49,7 +49,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> Moneymaker
+            <a href="#" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -81,9 +81,15 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Code Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -98,7 +104,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">Moneymaker</a>
+          <a href="#">Stock Prediction API</a>
         
       </nav>
 
@@ -129,7 +135,7 @@
     
       <li><a href="#">Docs</a> &raquo;</li>
         
-      <li>Welcome to Moneymaker’s documentation!</li>
+      <li>Welcome to the Stock Prediction API documentation</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -148,17 +154,34 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="welcome-to-moneymaker-s-documentation">
-<h1>Welcome to Moneymaker’s documentation!<a class="headerlink" href="#welcome-to-moneymaker-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="welcome-to-the-stock-prediction-api-documentation">
+<h1>Welcome to the Stock Prediction API documentation<a class="headerlink" href="#welcome-to-the-stock-prediction-api-documentation" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>The goal of our project is to create a stock market modeling API that would utilize multiple different types of machine learning models to learn patterns in stock prices and make predictions about future stock prices. With the goal of an API in mind, we have integrated automatic documentation building and our code base consists primarily of object-oriented code. To that end, we integrated Yahoo’s API a class that serves as a common ground for the disparate models to acquire data.</p>
+<p>Information on each part of the machine learning model as well as examples of the results are found in the notes below.</p>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes/examples.html">Examples</a></li>
 </ul>
 </div>
+<p>All of our module’s code is documented and can be found here:</p>
 <div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Code Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_build/modules.html">moneymaker</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="_build/main.html">main module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_build/src.html">src package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_build/tests.html">tests package</a></li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 <div class="section" id="indices-and-tables">
@@ -177,7 +200,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="notes/about.html" class="btn btn-neutral float-right" title="About" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="notes/LSTM.html" class="btn btn-neutral float-right" title="Understanding the LSTM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>src package &mdash; Moneymaker  documentation</title>
+  <title>src package &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -50,7 +50,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Moneymaker
+            <a href="../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -82,9 +82,11 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes/examples.html">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
@@ -117,7 +119,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">Moneymaker</a>
+          <a href="../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -176,40 +178,91 @@
 </div>
 <div class="section" id="module-src.BayesReg">
 <span id="src-bayesreg-module"></span><h2>src.BayesReg module<a class="headerlink" href="#module-src.BayesReg" title="Permalink to this headline">¶</a></h2>
+<p>Code for the Gaussian Process Model implementation.</p>
+<p>&#64;author: Shashank Swaminathan</p>
 <dl class="class">
-<dt id="src.BayesReg.CashMoneySwag">
-<em class="property">class </em><code class="sig-prename descclassname">src.BayesReg.</code><code class="sig-name descname">CashMoneySwag</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">10</em>, <em class="sig-param">54</em>, <em class="sig-param">55</em>, <em class="sig-param">875495)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#CashMoneySwag"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.CashMoneySwag" title="Permalink to this definition">¶</a></dt>
+<dt id="src.BayesReg.GPM">
+<em class="property">class </em><code class="sig-prename descclassname">src.BayesReg.</code><code class="sig-name descname">GPM</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">12</em>, <em class="sig-param">36</em>, <em class="sig-param">5</em>, <em class="sig-param">34810)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class encapsulating Gaussian Process model implementation. Depends on the PyMC3 library.</p>
 <dl class="method">
-<dt id="src.BayesReg.CashMoneySwag.__init__">
-<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">10</em>, <em class="sig-param">54</em>, <em class="sig-param">55</em>, <em class="sig-param">875495)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#CashMoneySwag.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.CashMoneySwag.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+<dt id="src.BayesReg.GPM.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">12</em>, <em class="sig-param">36</em>, <em class="sig-param">5</em>, <em class="sig-param">34810)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>init function. Fetches and prepares data from desired ticker using Company class from accompanying get_data API. Assumes start and end dates of January 1st, 2000 -&gt; today.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ticker</strong> – Ticker of stock to predict.</p></li>
+<li><p><strong>start_date</strong> – Datetime object of when to start retrieving stock data. Defaults to 1/1/2000.</p></li>
+<li><p><strong>end_date</strong> – Datetime object of when to stop retrieving stock data. Defaults to today’s date.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
-<dt id="src.BayesReg.CashMoneySwag.go">
-<code class="sig-name descname">go</code><span class="sig-paren">(</span><em class="sig-param">start_date=None</em>, <em class="sig-param">split_date=Timestamp('2019-09-30 00:00:00')</em>, <em class="sig-param">end_date=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#CashMoneySwag.go"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.CashMoneySwag.go" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="src.BayesReg.GPM.go">
+<code class="sig-name descname">go</code><span class="sig-paren">(</span><em class="sig-param">start_date=None</em>, <em class="sig-param">split_date=Timestamp('2019-09-30 00:00:00')</em>, <em class="sig-param">end_date=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM.go"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM.go" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main function to train the model and predict future data. First generates training and testing data, then trains the GP on the training data. Finally, it predicts on the time range specified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_date</strong> – Date to start training GP. If left as None, defaults to starting date of training data set.</p></li>
+<li><p><strong>split_date</strong> – Date to end training.</p></li>
+<li><p><strong>start_date</strong> – Date to end predicting using GP. If left as None, defaults to ending date of training data set. Assumes prediction starts right after training.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple of four arrays, containing the mean predictions, upper/lower bounds of predictions, training data, and test data for comparison. Predictions done on non business days are dropped.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
 </div>
 <div class="section" id="module-src.CombinedModel">
 <span id="src-combinedmodel-module"></span><h2>src.CombinedModel module<a class="headerlink" href="#module-src.CombinedModel" title="Permalink to this headline">¶</a></h2>
+<p>Code for the combined model approach.</p>
+<p>&#64;author: Shashank Swaminathan</p>
 <dl class="class">
-<dt id="src.CombinedModel.WomboCombo">
-<em class="property">class </em><code class="sig-prename descclassname">src.CombinedModel.</code><code class="sig-name descname">WomboCombo</code><span class="sig-paren">(</span><em class="sig-param">mean_weight</em>, <em class="sig-param">ticker</em>, <em class="sig-param">comp_tickers</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#WomboCombo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.WomboCombo" title="Permalink to this definition">¶</a></dt>
+<dt id="src.CombinedModel.CombinedModel">
+<em class="property">class </em><code class="sig-prename descclassname">src.CombinedModel.</code><code class="sig-name descname">CombinedModel</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">comp_tickers</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#CombinedModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.CombinedModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class for handling combined model operations.</p>
 <dl class="method">
-<dt id="src.CombinedModel.WomboCombo.__init__">
-<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">mean_weight</em>, <em class="sig-param">ticker</em>, <em class="sig-param">comp_tickers</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#WomboCombo.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.WomboCombo.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+<dt id="src.CombinedModel.CombinedModel.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">comp_tickers</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#CombinedModel.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.CombinedModel.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>init function. It will set up the StockRNN and GPM classes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ticker</strong> – Ticker of stocks to predict</p></li>
+<li><p><strong>comp_tickers</strong> – List of tickers to compare desired ticker against. Used for StockRNN only.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
-<dt id="src.CombinedModel.WomboCombo.train">
-<code class="sig-name descname">train</code><span class="sig-paren">(</span><em class="sig-param">start_date</em>, <em class="sig-param">pred_start</em>, <em class="sig-param">pred_end</em>, <em class="sig-param">model_name='Combined'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#WomboCombo.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.WomboCombo.train" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="src.CombinedModel.CombinedModel.train">
+<code class="sig-name descname">train</code><span class="sig-paren">(</span><em class="sig-param">start_date</em>, <em class="sig-param">pred_start</em>, <em class="sig-param">pred_end</em>, <em class="sig-param">mw=0.5</em>, <em class="sig-param">n_epochs=10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/CombinedModel.html#CombinedModel.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.CombinedModel.CombinedModel.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main training function. It runs both the LSTM and GP models and stores results in attributes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_date</strong> – Training start date (for GP model only). Provide as datetime object.</p></li>
+<li><p><strong>pred_start</strong> – Date to start predictions from. Provide as datetime object.</p></li>
+<li><p><strong>pred_end</strong> – Date to end predictions. Provide as datetime object.</p></li>
+<li><p><strong>mw</strong> – Model weight. Used to do weighted average between GP and LSTM. 0 is for only the LSTM, and 1 is for only the GP. Defaults to 0.5 (equal split).</p></li>
+<li><p><strong>n_epochs</strong> – Number of epochs to train the LSTM. Defaults to 10.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>(Mean predictions [t, y], Upper/lower bounds of 2 std [t, y])</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -220,48 +273,60 @@
 <p>&#64;author: Duncan Mazza</p>
 <dl class="class">
 <dt id="src.StockRNN.StockRNN">
-<em class="property">class </em><code class="sig-prename descclassname">src.StockRNN.</code><code class="sig-name descname">StockRNN</code><span class="sig-paren">(</span><em class="sig-param">ticker: str</em>, <em class="sig-param">lstm_hidden_size: int = 100</em>, <em class="sig-param">lstm_num_layers: int = 2</em>, <em class="sig-param">to_compare: [&lt;class 'str'&gt;] = None</em>, <em class="sig-param">train_start_date: datetime.datetime = datetime.datetime(2017</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">train_end_date: datetime.datetime = datetime.datetime(2018</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">sequence_segment_length: int = 50</em>, <em class="sig-param">drop_prob: float = 0.3</em>, <em class="sig-param">device: str = 'cuda'</em>, <em class="sig-param">auto_populate: bool = True</em>, <em class="sig-param">train_data_prop: float = 0.8</em>, <em class="sig-param">lr: float = 0.0001</em>, <em class="sig-param">train_batch_size: int = 10</em>, <em class="sig-param">test_batch_size: int = 4</em>, <em class="sig-param">num_workers: int = 2</em>, <em class="sig-param">label_length: int = 30</em>, <em class="sig-param">try_load_weights: bool = False</em>, <em class="sig-param">save_state_dict: bool = True</em>, <em class="sig-param">rolling_avg_length: int = 10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">src.StockRNN.</code><code class="sig-name descname">StockRNN</code><span class="sig-paren">(</span><em class="sig-param">ticker: str</em>, <em class="sig-param">lstm_hidden_size: int = 100</em>, <em class="sig-param">lstm_num_layers: int = 2</em>, <em class="sig-param">to_compare: [&lt;class 'str'&gt;] = None</em>, <em class="sig-param">train_start_date: datetime.datetime = datetime.datetime(2017</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">train_end_date: datetime.datetime = datetime.datetime(2018</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">sequence_segment_length: int = 50</em>, <em class="sig-param">drop_prob: float = 0.3</em>, <em class="sig-param">device: str = 'cuda'</em>, <em class="sig-param">auto_populate: bool = True</em>, <em class="sig-param">train_data_prop: float = 0.8</em>, <em class="sig-param">lr: float = 0.0001</em>, <em class="sig-param">train_batch_size: int = 10</em>, <em class="sig-param">test_batch_size: int = 4</em>, <em class="sig-param">num_workers: int = 2</em>, <em class="sig-param">label_length: int = 30</em>, <em class="sig-param">try_load_weights: bool = False</em>, <em class="sig-param">save_state_dict: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
-<p>Class for handling all RNN operations.</p>
+<p>Class for training on and predicting stocks using a LSTM network</p>
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.__init__">
-<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker: str</em>, <em class="sig-param">lstm_hidden_size: int = 100</em>, <em class="sig-param">lstm_num_layers: int = 2</em>, <em class="sig-param">to_compare: [&lt;class 'str'&gt;] = None</em>, <em class="sig-param">train_start_date: datetime.datetime = datetime.datetime(2017</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">train_end_date: datetime.datetime = datetime.datetime(2018</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">sequence_segment_length: int = 50</em>, <em class="sig-param">drop_prob: float = 0.3</em>, <em class="sig-param">device: str = 'cuda'</em>, <em class="sig-param">auto_populate: bool = True</em>, <em class="sig-param">train_data_prop: float = 0.8</em>, <em class="sig-param">lr: float = 0.0001</em>, <em class="sig-param">train_batch_size: int = 10</em>, <em class="sig-param">test_batch_size: int = 4</em>, <em class="sig-param">num_workers: int = 2</em>, <em class="sig-param">label_length: int = 30</em>, <em class="sig-param">try_load_weights: bool = False</em>, <em class="sig-param">save_state_dict: bool = True</em>, <em class="sig-param">rolling_avg_length: int = 10</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: documentation here</p>
-<dl class="field-list simple">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker: str</em>, <em class="sig-param">lstm_hidden_size: int = 100</em>, <em class="sig-param">lstm_num_layers: int = 2</em>, <em class="sig-param">to_compare: [&lt;class 'str'&gt;] = None</em>, <em class="sig-param">train_start_date: datetime.datetime = datetime.datetime(2017</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">train_end_date: datetime.datetime = datetime.datetime(2018</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">sequence_segment_length: int = 50</em>, <em class="sig-param">drop_prob: float = 0.3</em>, <em class="sig-param">device: str = 'cuda'</em>, <em class="sig-param">auto_populate: bool = True</em>, <em class="sig-param">train_data_prop: float = 0.8</em>, <em class="sig-param">lr: float = 0.0001</em>, <em class="sig-param">train_batch_size: int = 10</em>, <em class="sig-param">test_batch_size: int = 4</em>, <em class="sig-param">num_workers: int = 2</em>, <em class="sig-param">label_length: int = 30</em>, <em class="sig-param">try_load_weights: bool = False</em>, <em class="sig-param">save_state_dict: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lstm_hidden_size</strong> – </p></li>
-<li><p><strong>lstm_num_layers</strong> – </p></li>
-<li><p><strong>ticker</strong> – </p></li>
-<li><p><strong>to_compare</strong> – </p></li>
-<li><p><strong>train_start_date</strong> – </p></li>
-<li><p><strong>train_end_date</strong> – </p></li>
-<li><p><strong>sequence_segment_length</strong> – </p></li>
-<li><p><strong>drop_prob</strong> – </p></li>
-<li><p><strong>device</strong> – </p></li>
-<li><p><strong>auto_populate</strong> – </p></li>
-<li><p><strong>train_data_prop</strong> – </p></li>
-<li><p><strong>lr</strong> – </p></li>
-<li><p><strong>train_batch_size</strong> – </p></li>
-<li><p><strong>test_batch_size</strong> – </p></li>
-<li><p><strong>num_workers</strong> – </p></li>
-<li><p><strong>label_length</strong> – </p></li>
+<li><p><strong>lstm_hidden_size</strong> – size of the lstm hidden layer</p></li>
+<li><p><strong>lstm_num_layers</strong> – number of layers for the lstm</p></li>
+<li><p><strong>ticker</strong> – ticker of company whose stock you want to predict</p></li>
+<li><p><strong>to_compare</strong> – ticker of companies whose stock will be part of the features of the dataset</p></li>
+<li><p><strong>train_start_date</strong> – date to request data from</p></li>
+<li><p><strong>train_end_date</strong> – date to request data to</p></li>
+<li><p><strong>sequence_segment_length</strong> – length of sequences to train the model on</p></li>
+<li><p><strong>drop_prob</strong> – probability for dropout layers</p></li>
+<li><p><strong>device</strong> – string for device to try sending the tensors to (i.e. “cuda”)</p></li>
+<li><p><strong>auto_populate</strong> – automatically calls all ‘populate’ functions in the constructor</p></li>
+<li><p><strong>train_data_prop</strong> – proportion of data set to allocate to training data</p></li>
+<li><p><strong>lr</strong> – learning rate for the optimizer</p></li>
+<li><p><strong>train_batch_size</strong> – batch size for the training data</p></li>
 </ul>
 </dd>
 </dl>
+<p>:param test_batch_size:batch size for the testing data
+:param num_workers: parameter for Pytorch DataLoaders
+:param label_length: length of data (starting at the end of each sequence segment) to consider for the loss
+:param try_load_weights: boolean for whether the model should search for a cached model state dictionary
+:param save_state_dict: boolean for whether the model should cache its weights as a state dictionary</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.check_sliding_window_valid_at_index">
 <code class="sig-name descname">check_sliding_window_valid_at_index</code><span class="sig-paren">(</span><em class="sig-param">end_pred_index</em>, <em class="sig-param">pred_beyond_range</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.check_sliding_window_valid_at_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.check_sliding_window_valid_at_index" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: documentation</p>
+<dd><p>Checks that the index parameter for creating a distribution of predictions is valid for the dataset, and
+modifies it if it isn’t (as well as prints a warning describing the condition)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>end_pred_index</strong> – index of the date that is desired to be predicted</p></li>
+<li><p><strong>pred_beyond_range</strong> – tuple containing the range of the number of forecasted days the model will use to</p></li>
+</ul>
+</dd>
+</dl>
+<p>arrive at a prediction at <code class="docutils literal notranslate"><span class="pre">end_pred_index</span></code>
+:return: end_pred_index (modified if necessary)</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.do_training">
 <code class="sig-name descname">do_training</code><span class="sig-paren">(</span><em class="sig-param">num_epochs: int</em>, <em class="sig-param">verbose=True</em>, <em class="sig-param">plot_output: bool = True</em>, <em class="sig-param">plot_output_figsize: (&lt;class 'int'&gt;</em>, <em class="sig-param">&lt;class 'int'&gt;) = (5</em>, <em class="sig-param">10)</em>, <em class="sig-param">plot_loss: bool = True</em>, <em class="sig-param">plot_loss_figsize: (&lt;class 'int'&gt;</em>, <em class="sig-param">&lt;class 'int'&gt;) = (7</em>, <em class="sig-param">5)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.do_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.do_training" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method trains the network using data in <code class="xref py py-attr docutils literal notranslate"><span class="pre">train_loader</span></code> and checks against the data in
-<code class="xref py py-attr docutils literal notranslate"><span class="pre">test_loader</span></code> at the end of each epoch.. The forward pass through the network produces sequences of the
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">test_loader</span></code> at the end of each epoch. The forward pass through the network produces sequences of the
 same length as the input sequences. The sequences in the label data are of length <code class="xref py py-attr docutils literal notranslate"><span class="pre">label_length</span></code>, so the
 output sequences are  cropped to length <code class="xref py py-attr docutils literal notranslate"><span class="pre">label_length</span></code> before being passed through the MSE loss function.
 Because each element of the output sequence at position <code class="docutils literal notranslate"><span class="pre">n</span></code> is a prediction of the input element <code class="docutils literal notranslate"><span class="pre">n+1</span></code>, the
@@ -288,12 +353,13 @@ of the output sequence.</p>
 <dd><p>Completes a forward pass of data through the network. The tensor passed in is of shape (batch size, features,
 sequence length), and the output is of shape (batch size, 1, sequence length). The data is passed through a LSTM
 layer with an arbitrary number of layers and an arbitrary hidden size (as defined by <code class="xref py py-attr docutils literal notranslate"><span class="pre">lstm_hidden_size</span></code>
-and <code class="xref py py-attr docutils literal notranslate"><span class="pre">lstm_num_layers</span></code></p>
+and <code class="xref py py-attr docutils literal notranslate"><span class="pre">lstm_num_layers</span></code>; the output is then passed through 2 fully connected layers such that the final
+number of features is the same as the input number of features (<code class="xref py py-attr docutils literal notranslate"><span class="pre">num_companies</span></code>)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>X</strong> – input matrix of data of shape: (batch size, features (number of companies), sequence length)</p></li>
-<li><p><strong>predict_beyond</strong> – TODO</p></li>
+<li><p><strong>predict_beyond</strong> – number of days to recursively predict beyond the given input sequence</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -305,33 +371,50 @@ and <code class="xref py py-attr docutils literal notranslate"><span class="pre"
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.generate_predicted_distribution">
 <code class="sig-name descname">generate_predicted_distribution</code><span class="sig-paren">(</span><em class="sig-param">end_pred_index: int = None</em>, <em class="sig-param">pred_beyond_range: (&lt;class 'int'&gt;</em>, <em class="sig-param">&lt;class 'int'&gt;) = (1</em>, <em class="sig-param">10)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.generate_predicted_distribution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.generate_predicted_distribution" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: documentation</p>
+<dd><p>Returns a list of predicted stock values at a given date using a range of forecast lengths</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>end_pred_index</strong> – index of the date that is desired to be predicted</p></li>
+<li><p><strong>pred_beyond_range</strong> – tuple containing the range of the number of forecasted days the model will use to</p></li>
+</ul>
+</dd>
+</dl>
+<p>arrive at a prediction at <code class="docutils literal notranslate"><span class="pre">end_pred_index</span></code>
+:return: list of predicted values (of length given by <code class="docutils literal notranslate"><span class="pre">pred_beyond_range</span></code>)
+:return: actual stock value corresponding to the predictions</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.make_prediction_with_validation">
 <code class="sig-name descname">make_prediction_with_validation</code><span class="sig-paren">(</span><em class="sig-param">predict_beyond: int = 30</em>, <em class="sig-param">num_plots: int = 2</em>, <em class="sig-param">data_start_indices: numpy.ndarray = None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.make_prediction_with_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.make_prediction_with_validation" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="simple">
-<dt>Randomly selects data from the dataset and makes a prediction <code class="docutils literal notranslate"><span class="pre">predict_beyond</span></code> days out, and the actual values</dt><dd><p>of the stock are shown alongside.</p>
-</dd>
-</dl>
+<dd><p>Selects data from the dataset and makes a prediction <code class="docutils literal notranslate"><span class="pre">predict_beyond</span></code> days out, and the actual values
+of the stock are shown alongside.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>predict_beyond</strong> – days to predict ahead in the future</p></li>
-<li><p><strong>num_plots</strong> – </p></li>
+<li><p><strong>data_start_indices</strong> – indices corresponding to locations in the total dataset sequence for the training</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p></p>
-</dd>
 </dl>
+<p>data to be gathered from (with the training data being of length <code class="xref py py-attr docutils literal notranslate"><span class="pre">sequence_segment_length</span></code>)
+:return: length of the data being returned (training + prediction sequences)
+:return: datetime objects corresponding to data_start_indices
+:return: datetime objects corresponding to the end of the returned sequences
+:return: indices corresponding to the days where the predicted sequence starts
+:return: input and label sequence data associated with each pass of the model
+:return: numpy array of the model output
+:return: training data (in absolute stock value form instead of the % change that the model sees)
+:return: output prediction of the model converted from % change to actual stock values
+:return: label data (in absolute stock value form instead of % change) to compare to the output prediction
+:return: disparity between predicted stock values and actual stock values</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.peek_dataset">
 <code class="sig-name descname">peek_dataset</code><span class="sig-paren">(</span><em class="sig-param">figsize: (&lt;class 'int'&gt;</em>, <em class="sig-param">&lt;class 'int'&gt;) = (10</em>, <em class="sig-param">5)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.peek_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.peek_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a simple line plot of the stock data</p>
+<dd><p>Creates a simple line plot of the entire dataset</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>figsize</strong> – tuple of integers for <code class="xref py py-class docutils literal notranslate"><span class="pre">plt.subplots</span></code> <code class="docutils literal notranslate"><span class="pre">figsize</span></code> argument</p>
@@ -348,7 +431,20 @@ and <code class="xref py py-attr docutils literal notranslate"><span class="pre"
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.plot_prediction_with_validation">
 <code class="sig-name descname">plot_prediction_with_validation</code><span class="sig-paren">(</span><em class="sig-param">predict_beyond: int = 30</em>, <em class="sig-param">num_plots: int = 5</em>, <em class="sig-param">plt_scl=20</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.plot_prediction_with_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.plot_prediction_with_validation" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: documentation</p>
+<dd><p>A method for debugging/validating <a class="reference internal" href="#src.StockRNN.StockRNN.make_prediction_with_validation" title="src.StockRNN.StockRNN.make_prediction_with_validation"><code class="xref py py-attr docutils literal notranslate"><span class="pre">make_prediction_with_validation</span></code></a> - makes predictions and shows the
+raw output of the model, reconstructed stock prices, and disparity between predicted stock prices and actual
+stock prices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>predict_beyond</strong> – days to predict ahead in the future</p></li>
+<li><p><strong>num_plots</strong> – number of times to call <a class="reference internal" href="#src.StockRNN.StockRNN.make_prediction_with_validation" title="src.StockRNN.StockRNN.make_prediction_with_validation"><code class="xref py py-attr docutils literal notranslate"><span class="pre">make_prediction_with_validation</span></code></a> and plot the results</p></li>
+</ul>
+</dd>
+<dt class="field-even">Plt_scl</dt>
+<dd class="field-even"><p>integer for width and heigh parameters of matplotlib plot</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
@@ -383,7 +479,20 @@ seed the random number generator.</p>
 <dl class="method">
 <dt id="src.StockRNN.StockRNN.pred_in_conj">
 <code class="sig-name descname">pred_in_conj</code><span class="sig-paren">(</span><em class="sig-param">start_of_pred_idx: int</em>, <em class="sig-param">n_days: int</em>, <em class="sig-param">pred_beyond_range: (&lt;class 'int'&gt;</em>, <em class="sig-param">&lt;class 'int'&gt;) = (1</em>, <em class="sig-param">10)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/StockRNN.html#StockRNN.pred_in_conj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.StockRNN.StockRNN.pred_in_conj" title="Permalink to this definition">¶</a></dt>
-<dd><p>TODO: documentation</p>
+<dd><p>Calls <a href="#id1"><span class="problematic" id="id2">:method:`generate_predicted_distribution`</span></a> to create a list of predictions for each day given in a given
+range, and returns the mean and standard deviation associated with each day.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start_of_pred_index</strong> – integer corresponding to the first date whose distribution will be predicted</p></li>
+<li><p><strong>n_days</strong> – number of days from <code class="docutils literal notranslate"><span class="pre">start_of_pred_index</span></code> to predict out</p></li>
+<li><p><strong>pred_beyond_range</strong> – tuple containing the range of the number of forecasted days the model will use to</p></li>
+</ul>
+</dd>
+</dl>
+<p>arrive at a prediction at <code class="docutils literal notranslate"><span class="pre">end_pred_index</span></code>
+:return: list of length <code class="docutils literal notranslate"><span class="pre">n_days</span></code> of the mean values associated with each day’s predicted stock
+:return: list of length <code class="docutils literal notranslate"><span class="pre">n_days</span></code> of the standard deviation associated with each day’s predicted stock</p>
 </dd></dl>
 
 <dl class="method">
@@ -444,7 +553,13 @@ seed the random number generator.</p>
 <dl class="method">
 <dt id="src.get_data.Company.get_date_at_index">
 <code class="sig-name descname">get_date_at_index</code><span class="sig-paren">(</span><em class="sig-param">i</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/get_data.html#Company.get_date_at_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.get_data.Company.get_date_at_index" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Returns the datetime object at index</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>i</strong> – index to return the date of</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="method">
 <dt id="src.get_data.Company.moving_average">
@@ -473,7 +588,16 @@ were changed respectively).</p>
 <dl class="method">
 <dt id="src.get_data.Company.reconstruct_stock_from_percent_change">
 <code class="sig-name descname">reconstruct_stock_from_percent_change</code><span class="sig-paren">(</span><em class="sig-param">percent_change_vec: numpy.ndarray</em>, <em class="sig-param">initial_condition_index: int</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/get_data.html#Company.reconstruct_stock_from_percent_change"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.get_data.Company.reconstruct_stock_from_percent_change" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Reconstruct the stock prices from percent change</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>percent_change_vec</strong> – vector of percent changes</p></li>
+<li><p><strong>initial_condition_index</strong> – index of initial condition for the % change</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="method">
 <dt id="src.get_data.Company.return_data">
@@ -500,7 +624,13 @@ working directory.</p>
 <dl class="method">
 <dt id="src.get_data.Company.return_dummy_data">
 <code class="sig-name descname">return_dummy_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/get_data.html#Company.return_dummy_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.get_data.Company.return_dummy_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Creates linear stock data as dummy data for testing a model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>numpy array of dummy data</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="method">
 <dt id="src.get_data.Company.return_numpy_array_of_company_daily_stock_close">
@@ -517,16 +647,16 @@ working directory.</p>
 <dt id="src.get_data.Company.return_numpy_array_of_company_daily_stock_percent_change">
 <code class="sig-name descname">return_numpy_array_of_company_daily_stock_percent_change</code><span class="sig-paren">(</span><em class="sig-param">rolling_avg_length: int = 4</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="reference internal" href="../_modules/src/get_data.html#Company.return_numpy_array_of_company_daily_stock_percent_change"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.get_data.Company.return_numpy_array_of_company_daily_stock_percent_change" title="Permalink to this definition">¶</a></dt>
 <dd><p>Converts the numpy array of the closing stock data (acquired by calling
-<a href="#id1"><span class="problematic" id="id2">:method:`return_numpy_array_of_company_daily_stock_close`</span></a>) into an array of day-over-day percent change.
+<a href="#id3"><span class="problematic" id="id4">:method:`return_numpy_array_of_company_daily_stock_close`</span></a>) into an array of day-over-day percent change.
 Adds a value of 0 at the beginning of the array to maintain sequence length.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>apply_rolling_avg</strong> – if nonzero, applies a rolling average filter to the percent change data (see</p>
 </dd>
 </dl>
-<p><a href="#id3"><span class="problematic" id="id4">:method:`moving_average`</span></a> for details on how the rolling average is calculated with padding)
+<p><a href="#id5"><span class="problematic" id="id6">:method:`moving_average`</span></a> for details on how the rolling average is calculated with padding)
 :return: numpy array of length 1 less than the array generated by
-<a href="#id5"><span class="problematic" id="id6">:method:`return_numpy_array_of_company_daily_stock_close`</span></a></p>
+<a href="#id7"><span class="problematic" id="id8">:method:`return_numpy_array_of_company_daily_stock_close`</span></a></p>
 </dd></dl>
 
 <dl class="method">

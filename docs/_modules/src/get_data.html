@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>src.get_data &mdash; Moneymaker  documentation</title>
+  <title>src.get_data &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -48,7 +48,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> Moneymaker
+            <a href="../../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -80,9 +80,15 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Code Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -97,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">Moneymaker</a>
+          <a href="../../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -162,8 +168,8 @@
 <span class="n">ZERO_TIME</span> <span class="o">=</span> <span class="s2">&quot; 00:00:00&quot;</span>
 
 
-<div class="viewcode-block" id="Company"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company">[docs]</a><span class="k">class</span> <span class="nc">Company</span><span class="p">:</span>
-<div class="viewcode-block" id="Company.__init__"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">call_populate_dataframe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<div class="viewcode-block" id="Company"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company">[docs]</a><span class="k">class</span> <span class="nc">Company</span><span class="p">:</span>
+<div class="viewcode-block" id="Company.__init__"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">call_populate_dataframe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
                  <span class="n">cache_bool</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        TODO: documentation here</span>
@@ -185,7 +191,7 @@
         <span class="k">if</span> <span class="n">call_populate_dataframe</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">populate_dataframe</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Company.populate_dataframe"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.populate_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">populate_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.populate_dataframe"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.populate_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">populate_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Populates :attr:`data_frame` with stock data acquired using pandas_datareader.data. View more information</span>
 <span class="sd">        `here &lt;https://pandas-datareader.readthedocs.io/en/latest/remote_data.html&gt;`__. Modifies :attr:`start_date`,</span>
@@ -208,7 +214,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">end_date</span> <span class="o">=</span> <span class="n">data_frame_end_date</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">end_date_changed</span> <span class="o">=</span> <span class="kc">True</span></div>
 
-<div class="viewcode-block" id="Company.return_data"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.return_data">[docs]</a>    <span class="k">def</span> <span class="nf">return_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<div class="viewcode-block" id="Company.return_data"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.return_data">[docs]</a>    <span class="k">def</span> <span class="nf">return_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the DataFrame containing the financial data for the prescribed company. This function will pull the</span>
 <span class="sd">        data from the Yahoo API built into :ref:`pandas_datareader` if it has not been cached and will then cache the</span>
@@ -271,10 +277,15 @@
 
         <span class="k">return</span> <span class="n">data_frame</span></div>
 
-<div class="viewcode-block" id="Company.return_dummy_data"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.return_dummy_data">[docs]</a>    <span class="k">def</span> <span class="nf">return_dummy_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.return_dummy_data"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.return_dummy_data">[docs]</a>    <span class="k">def</span> <span class="nf">return_dummy_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates linear stock data as dummy data for testing a model</span>
+
+<span class="sd">        :return: numpy array of dummy data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;Date&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">)],</span> <span class="s2">&quot;Close&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">)]})</span></div>
 
-<div class="viewcode-block" id="Company.revise_start_date"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.revise_start_date">[docs]</a>    <span class="k">def</span> <span class="nf">revise_start_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_start_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.revise_start_date"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.revise_start_date">[docs]</a>    <span class="k">def</span> <span class="nf">revise_start_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_start_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Modifies :attr:`data_frame` such that the starting date of the data is equal to ``new_start_date`` (all prior</span>
 <span class="sd">        data is deleted).</span>
@@ -286,7 +297,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="n">loc</span><span class="p">:]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_date</span> <span class="o">=</span> <span class="n">new_start_date</span></div>
 
-<div class="viewcode-block" id="Company.revise_end_date"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.revise_end_date">[docs]</a>    <span class="k">def</span> <span class="nf">revise_end_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_end_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.revise_end_date"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.revise_end_date">[docs]</a>    <span class="k">def</span> <span class="nf">revise_end_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_end_date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Modifies :attr:`data_frame` such that the last date of the data is equal to ``new_end_date`` (all following</span>
 <span class="sd">        data is deleted).</span>
@@ -299,7 +310,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">:</span> <span class="n">DataFrame</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end_date</span> <span class="o">=</span> <span class="n">new_end_date</span></div>
 
-<div class="viewcode-block" id="Company.cache"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.cache">[docs]</a>    <span class="k">def</span> <span class="nf">cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">:</span> <span class="n">DataFrame</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.cache"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.cache">[docs]</a>    <span class="k">def</span> <span class="nf">cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_frame</span><span class="p">:</span> <span class="n">DataFrame</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Saves a DataFrame as a ``.csv`` to a path relative to the current working directory.</span>
 
@@ -317,7 +328,7 @@
             <span class="n">data_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span>
         <span class="n">data_frame</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Company.return_numpy_array_of_company_daily_stock_close"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.return_numpy_array_of_company_daily_stock_close">[docs]</a>    <span class="k">def</span> <span class="nf">return_numpy_array_of_company_daily_stock_close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<div class="viewcode-block" id="Company.return_numpy_array_of_company_daily_stock_close"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.return_numpy_array_of_company_daily_stock_close">[docs]</a>    <span class="k">def</span> <span class="nf">return_numpy_array_of_company_daily_stock_close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a numpy array of the &quot;Close&quot; column of :attr:`data_frame`.</span>
 
@@ -327,7 +338,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">populate_dataframe</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="s2">&quot;Close&quot;</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="Company.return_numpy_array_of_company_daily_stock_percent_change"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.return_numpy_array_of_company_daily_stock_percent_change">[docs]</a>    <span class="k">def</span> <span class="nf">return_numpy_array_of_company_daily_stock_percent_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rolling_avg_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<div class="viewcode-block" id="Company.return_numpy_array_of_company_daily_stock_percent_change"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.return_numpy_array_of_company_daily_stock_percent_change">[docs]</a>    <span class="k">def</span> <span class="nf">return_numpy_array_of_company_daily_stock_percent_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rolling_avg_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Converts the numpy array of the closing stock data (acquired by calling</span>
 <span class="sd">        :method:`return_numpy_array_of_company_daily_stock_close`) into an array of day-over-day percent change.</span>
@@ -347,10 +358,15 @@
         <span class="c1"># else:</span>
         <span class="c1">#     return self.moving_average(percent_change, n=rolling_avg_length)</span>
 
-<div class="viewcode-block" id="Company.get_date_at_index"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.get_date_at_index">[docs]</a>    <span class="k">def</span> <span class="nf">get_date_at_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.get_date_at_index"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.get_date_at_index">[docs]</a>    <span class="k">def</span> <span class="nf">get_date_at_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the datetime object at index</span>
+
+<span class="sd">        :param i: index to return the date of</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Company.moving_average"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.moving_average">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Company.moving_average"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.moving_average">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">moving_average</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">padding</span> <span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculates the moving average of a one-dimensional numpy array ``a``, capable of utilizing a padding of</span>
@@ -367,7 +383,13 @@
         <span class="n">ret</span><span class="p">[</span><span class="n">n</span><span class="p">:]</span> <span class="o">=</span> <span class="n">ret</span><span class="p">[</span><span class="n">n</span><span class="p">:]</span> <span class="o">-</span> <span class="n">ret</span><span class="p">[:</span><span class="o">-</span><span class="n">n</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">ret</span><span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">/</span> <span class="n">n</span></div>
 
-<div class="viewcode-block" id="Company.reconstruct_stock_from_percent_change"><a class="viewcode-back" href="../../_build/src.get_data.html#src.get_data.Company.reconstruct_stock_from_percent_change">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct_stock_from_percent_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">percent_change_vec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">initial_condition_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<div class="viewcode-block" id="Company.reconstruct_stock_from_percent_change"><a class="viewcode-back" href="../../_build/src.html#src.get_data.Company.reconstruct_stock_from_percent_change">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct_stock_from_percent_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">percent_change_vec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">initial_condition_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reconstruct the stock prices from percent change</span>
+
+<span class="sd">        :param percent_change_vec: vector of percent changes</span>
+<span class="sd">        :param initial_condition_index: index of initial condition for the % change</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">len_percent_change_vec</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">percent_change_vec</span><span class="p">)</span>
         <span class="n">stock_price</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">len_percent_change_vec</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
         <span class="n">stock_price</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="s2">&quot;Close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[[</span><span class="n">initial_condition_index</span><span class="p">]]</span>

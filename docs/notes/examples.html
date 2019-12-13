@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Examples &mdash; Moneymaker  documentation</title>
+  <title>Examples &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -35,8 +35,8 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Usage" href="usage.html" />
-    <link rel="prev" title="About" href="about.html" /> 
+    <link rel="next" title="moneymaker" href="../_build/modules.html" />
+    <link rel="prev" title="Usage" href="usage.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +50,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Moneymaker
+            <a href="../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -82,9 +82,11 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
@@ -103,7 +105,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">Moneymaker</a>
+          <a href="../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -155,7 +157,15 @@
             
   <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
-<p>Here are some examples of using this tool.</p>
+<p>LSTM Example:
+A model trained for 100 epochs to predict Apple stock with the added features of Microsoft, Google, and Motorola stock produced the output shown below. The results in are generated in training mode; in evaluation mode, the model predicts mostly homogeneous trends between input sequences. Further work is required to mitigate this issue and produce predictions that are more robust.</p>
+<img alt="../_images/lstm_ex.png" src="../_images/lstm_ex.png" />
+<p>GPM Example:
+Below is a plot of the GP being trained on three months of Apple stock data, and then being used to predict for an additional month. The shaded red region is a 95% confidence interval, and the dark red line in the center is the MAP - the <em>maximum a posteriori</em>, or the mean most likely prediction. As can be noticed, the predictions are only accurate for the first few days out.</p>
+<img alt="../_images/gpmex.png" src="../_images/gpmex.png" />
+<p>Combined Model Example:</p>
+<p>Below is a screenshot of the API in action. It is run off of a Bokeh server. Look at the usage section for more details.</p>
+<img alt="../_images/wcscreenshot.png" src="../_images/wcscreenshot.png" />
 </div>
 
 
@@ -166,10 +176,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../_build/modules.html" class="btn btn-neutral float-right" title="moneymaker" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="about.html" class="btn btn-neutral float-left" title="About" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>src.StockRNN &mdash; Moneymaker  documentation</title>
+  <title>src.StockRNN &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -48,7 +48,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> Moneymaker
+            <a href="../../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -80,9 +80,15 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Code Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -97,7 +103,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">Moneymaker</a>
+          <a href="../../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -173,27 +179,9 @@
                   <span class="s2">&quot;that you have enabled the GPU your settings&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
 
 
-<span class="c1"># class Rescaler:</span>
-<span class="c1">#     def __init__(self, min_val, max_val):</span>
-<span class="c1">#         self.min_val = min_val</span>
-<span class="c1">#         self.max_val = max_val</span>
-<span class="c1">#         self.train_max = 0</span>
-<span class="c1">#         self.train_min = 0</span>
-<span class="c1">#</span>
-<span class="c1">#     def rescale_train(self, train_data):</span>
-<span class="c1">#         self.train_max = np.max(train_data)</span>
-<span class="c1">#         self.train_min = np.min(train_data)</span>
-<span class="c1">#         return (self.max_val - self.min_val) * (train_data - self.train_min) / (self.train_max - self.train_min) + \</span>
-<span class="c1">#                self.min_val</span>
-<span class="c1">#</span>
-<span class="c1">#     def rescale_test(self, test_data):</span>
-<span class="c1">#         return (self.max_val - self.min_val) * (test_data - self.train_min) / (self.train_max - self.train_min) + \</span>
-<span class="c1">#                self.min_val</span>
-
-
 <div class="viewcode-block" id="StockRNN"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN">[docs]</a><span class="k">class</span> <span class="nc">StockRNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Class for handling all RNN operations.</span>
+<span class="sd">    Class for training on and predicting stocks using a LSTM network</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">train_set</span><span class="p">:</span> <span class="n">TensorDataset</span>
     <span class="n">test_set</span><span class="p">:</span> <span class="n">TensorDataset</span>
@@ -205,26 +193,26 @@
                  <span class="n">sequence_segment_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">drop_prob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEVICE</span><span class="p">,</span>
                  <span class="n">auto_populate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">train_data_prop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
                  <span class="n">train_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">test_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">label_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
-                 <span class="n">try_load_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">save_state_dict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">rolling_avg_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+                 <span class="n">try_load_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">save_state_dict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: documentation here</span>
-
-<span class="sd">        :param lstm_hidden_size:</span>
-<span class="sd">        :param lstm_num_layers:</span>
-<span class="sd">        :param ticker:</span>
-<span class="sd">        :param to_compare:</span>
-<span class="sd">        :param train_start_date:</span>
-<span class="sd">        :param train_end_date:</span>
-<span class="sd">        :param sequence_segment_length:</span>
-<span class="sd">        :param drop_prob:</span>
-<span class="sd">        :param device:</span>
-<span class="sd">        :param auto_populate:</span>
-<span class="sd">        :param train_data_prop:</span>
-<span class="sd">        :param lr:</span>
-<span class="sd">        :param train_batch_size:</span>
-<span class="sd">        :param test_batch_size:</span>
-<span class="sd">        :param num_workers:</span>
-<span class="sd">        :param label_length:</span>
+<span class="sd">        :param lstm_hidden_size: size of the lstm hidden layer</span>
+<span class="sd">        :param lstm_num_layers: number of layers for the lstm</span>
+<span class="sd">        :param ticker: ticker of company whose stock you want to predict</span>
+<span class="sd">        :param to_compare: ticker of companies whose stock will be part of the features of the dataset</span>
+<span class="sd">        :param train_start_date: date to request data from</span>
+<span class="sd">        :param train_end_date: date to request data to</span>
+<span class="sd">        :param sequence_segment_length: length of sequences to train the model on</span>
+<span class="sd">        :param drop_prob: probability for dropout layers</span>
+<span class="sd">        :param device: string for device to try sending the tensors to (i.e. &quot;cuda&quot;)</span>
+<span class="sd">        :param auto_populate: automatically calls all &#39;populate&#39; functions in the constructor</span>
+<span class="sd">        :param train_data_prop: proportion of data set to allocate to training data</span>
+<span class="sd">        :param lr: learning rate for the optimizer</span>
+<span class="sd">        :param train_batch_size: batch size for the training data</span>
+<span class="sd">        :param test_batch_size:batch size for the testing data</span>
+<span class="sd">        :param num_workers: parameter for Pytorch DataLoaders</span>
+<span class="sd">        :param label_length: length of data (starting at the end of each sequence segment) to consider for the loss</span>
+<span class="sd">        :param try_load_weights: boolean for whether the model should search for a cached model state dictionary</span>
+<span class="sd">        :param save_state_dict: boolean for whether the model should cache its weights as a state dictionary</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">StockRNN</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
 
@@ -248,7 +236,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">test_batch_size</span> <span class="o">=</span> <span class="n">test_batch_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_state_dict</span> <span class="o">=</span> <span class="n">save_state_dict</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span> <span class="o">=</span> <span class="n">rolling_avg_length</span>
 
         <span class="k">if</span> <span class="n">label_length</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Label length was specified to be </span><span class="si">{}</span><span class="s2">, but cannot be &gt;= self.sequence_segment_length; setting &quot;</span>
@@ -312,12 +299,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">considering_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="s2">&quot;MODEL_FOR_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span> <span class="o">+</span> <span class="n">considering_string</span> <span class="o">+</span> \
-                          <span class="s2">&quot;_WITH_lstm_hidden_size_</span><span class="si">{}</span><span class="s2">_lstm_num_layers_</span><span class="si">{}</span><span class="s2">_input_size_</span><span class="si">{}</span><span class="s2">_rolling_avg_length_</span><span class="si">{}</span><span class="s2">_sequence_&quot;</span> \
+                          <span class="s2">&quot;_WITH_lstm_hidden_size_</span><span class="si">{}</span><span class="s2">_lstm_num_layers_</span><span class="si">{}</span><span class="s2">_input_size_</span><span class="si">{}</span><span class="s2">_sequence_&quot;</span> \
                           <span class="s2">&quot;segment_length_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                               <span class="bp">self</span><span class="o">.</span><span class="n">lstm_hidden_size</span><span class="p">,</span>
                               <span class="bp">self</span><span class="o">.</span><span class="n">lstm_num_layers</span><span class="p">,</span>
                               <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">,</span>
-                              <span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span><span class="p">,</span>
                               <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">model_weights_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span> <span class="o">+</span> <span class="s2">&quot;.bin&quot;</span><span class="p">)</span>
@@ -373,7 +359,7 @@
 
 <div class="viewcode-block" id="StockRNN.peek_dataset"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.peek_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">peek_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Creates a simple line plot of the stock data</span>
+<span class="sd">        Creates a simple line plot of the entire dataset</span>
 
 <span class="sd">        :param figsize: tuple of integers for :class:`plt.subplots` ``figsize`` argument</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -415,8 +401,7 @@
         <span class="n">daily_stock_data_lens</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">data_is_of_same_len</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">company</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">:</span>
-            <span class="n">daily_stock_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">company</span><span class="o">.</span><span class="n">return_numpy_array_of_company_daily_stock_percent_change</span><span class="p">(</span>
-                <span class="n">rolling_avg_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span><span class="p">))</span>
+            <span class="n">daily_stock_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">company</span><span class="o">.</span><span class="n">return_numpy_array_of_company_daily_stock_percent_change</span><span class="p">())</span>
             <span class="n">daily_stock_data_lens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
             <span class="k">if</span> <span class="n">daily_stock_data_lens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">daily_stock_data_lens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
                 <span class="n">data_is_of_same_len</span> <span class="o">=</span> <span class="kc">False</span>
@@ -532,10 +517,11 @@
 <span class="sd">        Completes a forward pass of data through the network. The tensor passed in is of shape (batch size, features,</span>
 <span class="sd">        sequence length), and the output is of shape (batch size, 1, sequence length). The data is passed through a LSTM</span>
 <span class="sd">        layer with an arbitrary number of layers and an arbitrary hidden size (as defined by :attr:`lstm_hidden_size`</span>
-<span class="sd">        and :attr:`lstm_num_layers`</span>
+<span class="sd">        and :attr:`lstm_num_layers`; the output is then passed through 2 fully connected layers such that the final</span>
+<span class="sd">        number of features is the same as the input number of features (:attr:`num_companies`)</span>
 
 <span class="sd">        :param X: input matrix of data of shape: (batch size, features (number of companies), sequence length)</span>
-<span class="sd">        :param predict_beyond: TODO</span>
+<span class="sd">        :param predict_beyond: number of days to recursively predict beyond the given input sequence</span>
 <span class="sd">        :return: output of the forward pass of the data through the network (same shape as input)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># input x needs to be converted from (batch_size, features, sequence_length) to</span>
@@ -570,7 +556,7 @@
                     <span class="n">plot_loss_figsize</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This method trains the network using data in :attr:`train_loader` and checks against the data in</span>
-<span class="sd">        :attr:`test_loader` at the end of each epoch.. The forward pass through the network produces sequences of the</span>
+<span class="sd">        :attr:`test_loader` at the end of each epoch. The forward pass through the network produces sequences of the</span>
 <span class="sd">        same length as the input sequences. The sequences in the label data are of length :attr:`label_length`, so the</span>
 <span class="sd">        output sequences are  cropped to length :attr:`label_length` before being passed through the MSE loss function.</span>
 <span class="sd">        Because each element of the output sequence at position ``n`` is a prediction of the input element ``n+1``, the</span>
@@ -585,7 +571,6 @@
 <span class="sd">        :param plot_loss: if true, plot the training and test loss</span>
 <span class="sd">        :param plot_loss_figsize: ``figsize`` argument for the loss plot</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># self.train(True)</span>
         <span class="n">epoch_num</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">pass_num</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">training_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
@@ -698,12 +683,22 @@
 <div class="viewcode-block" id="StockRNN.make_prediction_with_validation"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.make_prediction_with_validation">[docs]</a>    <span class="k">def</span> <span class="nf">make_prediction_with_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predict_beyond</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
                                         <span class="n">data_start_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values</span>
-<span class="sd">         of the stock are shown alongside.</span>
+<span class="sd">        Selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values</span>
+<span class="sd">        of the stock are shown alongside.</span>
 
 <span class="sd">        :param predict_beyond: days to predict ahead in the future</span>
-<span class="sd">        :param num_plots:</span>
-<span class="sd">        :return:</span>
+<span class="sd">        :param data_start_indices: indices corresponding to locations in the total dataset sequence for the training</span>
+<span class="sd">        data to be gathered from (with the training data being of length :attr:`sequence_segment_length`)</span>
+<span class="sd">        :return: length of the data being returned (training + prediction sequences)</span>
+<span class="sd">        :return: datetime objects corresponding to data_start_indices</span>
+<span class="sd">        :return: datetime objects corresponding to the end of the returned sequences</span>
+<span class="sd">        :return: indices corresponding to the days where the predicted sequence starts</span>
+<span class="sd">        :return: input and label sequence data associated with each pass of the model</span>
+<span class="sd">        :return: numpy array of the model output</span>
+<span class="sd">        :return: training data (in absolute stock value form instead of the % change that the model sees)</span>
+<span class="sd">        :return: output prediction of the model converted from % change to actual stock values</span>
+<span class="sd">        :return: label data (in absolute stock value form instead of % change) to compare to the output prediction</span>
+<span class="sd">        :return: disparity between predicted stock values and actual stock values</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">input_and_pred_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="n">predict_beyond</span>
         <span class="k">if</span> <span class="n">data_start_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -745,7 +740,13 @@
 
 <div class="viewcode-block" id="StockRNN.check_sliding_window_valid_at_index"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.check_sliding_window_valid_at_index">[docs]</a>    <span class="k">def</span> <span class="nf">check_sliding_window_valid_at_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">end_pred_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: documentation</span>
+<span class="sd">        Checks that the index parameter for creating a distribution of predictions is valid for the dataset, and</span>
+<span class="sd">        modifies it if it isn&#39;t (as well as prints a warning describing the condition)</span>
+
+<span class="sd">        :param end_pred_index: index of the date that is desired to be predicted</span>
+<span class="sd">        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to</span>
+<span class="sd">        arrive at a prediction at ``end_pred_index``</span>
+<span class="sd">        :return: end_pred_index (modified if necessary)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">end_pred_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;latest_data_index is None, so will set to minimum possible value&quot;</span><span class="p">)</span>
@@ -761,7 +762,13 @@
 
 <div class="viewcode-block" id="StockRNN.generate_predicted_distribution"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.generate_predicted_distribution">[docs]</a>    <span class="k">def</span> <span class="nf">generate_predicted_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">end_pred_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: documentation</span>
+<span class="sd">        Returns a list of predicted stock values at a given date using a range of forecast lengths</span>
+
+<span class="sd">        :param end_pred_index: index of the date that is desired to be predicted</span>
+<span class="sd">        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to</span>
+<span class="sd">        arrive at a prediction at ``end_pred_index``</span>
+<span class="sd">        :return: list of predicted values (of length given by ``pred_beyond_range``)</span>
+<span class="sd">        :return: actual stock value corresponding to the predictions</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_sliding_window_valid_at_index</span><span class="p">(</span><span class="n">end_pred_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">)</span>
         <span class="n">pred_beyond_range_delta</span> <span class="o">=</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -780,7 +787,15 @@
 
 <div class="viewcode-block" id="StockRNN.pred_in_conj"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.pred_in_conj">[docs]</a>    <span class="k">def</span> <span class="nf">pred_in_conj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_of_pred_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_days</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: documentation</span>
+<span class="sd">        Calls :method:`generate_predicted_distribution` to create a list of predictions for each day given in a given</span>
+<span class="sd">        range, and returns the mean and standard deviation associated with each day.</span>
+
+<span class="sd">        :param start_of_pred_index: integer corresponding to the first date whose distribution will be predicted</span>
+<span class="sd">        :param n_days: number of days from ``start_of_pred_index`` to predict out</span>
+<span class="sd">        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to</span>
+<span class="sd">        arrive at a prediction at ``end_pred_index``</span>
+<span class="sd">        :return: list of length ``n_days`` of the mean values associated with each day&#39;s predicted stock</span>
+<span class="sd">        :return: list of length ``n_days`` of the standard deviation associated with each day&#39;s predicted stock</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">mean_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">std_list</span> <span class="o">=</span> <span class="p">[]</span>
@@ -807,7 +822,13 @@
 
 <div class="viewcode-block" id="StockRNN.plot_prediction_with_validation"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.plot_prediction_with_validation">[docs]</a>    <span class="k">def</span> <span class="nf">plot_prediction_with_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predict_beyond</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">plt_scl</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TODO: documentation</span>
+<span class="sd">        A method for debugging/validating :attr:`make_prediction_with_validation` - makes predictions and shows the</span>
+<span class="sd">        raw output of the model, reconstructed stock prices, and disparity between predicted stock prices and actual</span>
+<span class="sd">        stock prices.</span>
+
+<span class="sd">        :param predict_beyond: days to predict ahead in the future</span>
+<span class="sd">        :param num_plots: number of times to call :attr:`make_prediction_with_validation` and plot the results</span>
+<span class="sd">        :plt_scl: integer for width and heigh parameters of matplotlib plot</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">forward_seq_len</span><span class="p">,</span> <span class="n">start_dates</span><span class="p">,</span> <span class="n">end_dates</span><span class="p">,</span> <span class="n">pred_data_start_indicies</span><span class="p">,</span> <span class="n">make_pred_data</span><span class="p">,</span> \
         <span class="n">output_numpy</span><span class="p">,</span> <span class="n">orig_stock_list</span><span class="p">,</span> <span class="n">pred_stock_list</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">,</span> <span class="n">disparity_list</span> <span class="o">=</span> \
@@ -877,7 +898,6 @@
     <span class="c1"># model.eval()</span>
     <span class="n">model</span><span class="o">.</span><span class="n">plot_prediction_with_validation</span><span class="p">()</span>
     <span class="c1"># model.plot_predicted_distribution(12)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">pred_in_conj</span><span class="p">(</span><span class="mi">123</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 </pre></div>
 
            </div>
