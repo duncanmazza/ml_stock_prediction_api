@@ -463,7 +463,7 @@ class StockRNN(nn.Module):
 
                 self.optimizer.zero_grad()
                 output = self.forward(train_inputs)
-                train_loss_size = self.loss(output[:, 0, output.shape[2] - self.label_length - 1:-1], train_labels[:, 0, :])
+                train_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
 
                 train_loss_size.backward()
                 train_loss_list.append(train_loss_size.data.item())
@@ -493,7 +493,7 @@ class StockRNN(nn.Module):
                     test_inputs.to(DEVICE)
                     test_labels.to(DEVICE)
                 output = self.forward(test_inputs)
-                test_loss_size = self.loss(output[:, 0, output.shape[2] - self.label_length - 1:-1], test_labels[:, 0, :])
+                test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
                 test_loss_this_epoch += test_loss_size.data.item()
 
                 if epoch_num == num_epochs and plot_output and i < subplot_val:
@@ -630,7 +630,7 @@ class StockRNN(nn.Module):
             debug.append(actual_stock_list[0][-1])
         return predicted_value_list, actual_stock_list[0][-1]
 
-    def pred_in_conj(self, start_of_pred_idx, n_days, pred_beyond_range: (int, int) = (1, 10)):
+    def pred_in_conj(self, start_of_pred_idx: int, n_days: int, pred_beyond_range: (int, int) = (1, 10)):
         r"""
         TODO: documentation
         """
@@ -729,3 +729,4 @@ if __name__ == "__main__":
     # model.eval()
     model.plot_prediction_with_validation()
     # model.plot_predicted_distribution(12)
+    model.pred_in_conj(123, 4)
