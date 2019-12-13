@@ -1,0 +1,922 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>src.StockRNN &mdash; Moneymaker  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Moneymaker
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Notes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/usage.html">Usage</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Moneymaker</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>src.StockRNN</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for src.StockRNN</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Code to train the RNN</span>
+
+<span class="sd">@author: Duncan Mazza</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">torch</span> <span class="k">import</span> <span class="n">Tensor</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="k">import</span> <span class="n">DataLoader</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="k">import</span> <span class="n">TensorDataset</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">src.get_data</span> <span class="k">import</span> <span class="n">Company</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">pandas</span> <span class="k">import</span> <span class="n">_libs</span>
+<span class="kn">from</span> <span class="nn">pandas_datareader._utils</span> <span class="k">import</span> <span class="n">RemoteDataError</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">ZERO_TIME</span> <span class="o">=</span> <span class="s2">&quot; 00:00:00&quot;</span>
+
+<span class="n">DEVICE</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span>  <span class="c1"># selects the gpu to be used</span>
+<span class="n">TO_GPU_FAIL_MSG</span> <span class="o">=</span> <span class="s2">&quot;Unable to successfully run model.to(&#39;</span><span class="si">{}</span><span class="s2">&#39;). If running in Collaboratory, make sure &quot;</span> \
+                  <span class="s2">&quot;that you have enabled the GPU your settings&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+
+
+<span class="c1"># class Rescaler:</span>
+<span class="c1">#     def __init__(self, min_val, max_val):</span>
+<span class="c1">#         self.min_val = min_val</span>
+<span class="c1">#         self.max_val = max_val</span>
+<span class="c1">#         self.train_max = 0</span>
+<span class="c1">#         self.train_min = 0</span>
+<span class="c1">#</span>
+<span class="c1">#     def rescale_train(self, train_data):</span>
+<span class="c1">#         self.train_max = np.max(train_data)</span>
+<span class="c1">#         self.train_min = np.min(train_data)</span>
+<span class="c1">#         return (self.max_val - self.min_val) * (train_data - self.train_min) / (self.train_max - self.train_min) + \</span>
+<span class="c1">#                self.min_val</span>
+<span class="c1">#</span>
+<span class="c1">#     def rescale_test(self, test_data):</span>
+<span class="c1">#         return (self.max_val - self.min_val) * (test_data - self.train_min) / (self.train_max - self.train_min) + \</span>
+<span class="c1">#                self.min_val</span>
+
+
+<div class="viewcode-block" id="StockRNN"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN">[docs]</a><span class="k">class</span> <span class="nc">StockRNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for handling all RNN operations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">train_set</span><span class="p">:</span> <span class="n">TensorDataset</span>
+    <span class="n">test_set</span><span class="p">:</span> <span class="n">TensorDataset</span>
+    <span class="n">train_loader</span><span class="p">:</span> <span class="n">DataLoader</span>
+    <span class="n">test_loader</span><span class="p">:</span> <span class="n">DataLoader</span>
+
+<div class="viewcode-block" id="StockRNN.__init__"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lstm_hidden_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">lstm_num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">to_compare</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">train_start_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2017</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">train_end_date</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2018</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                 <span class="n">sequence_segment_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">drop_prob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEVICE</span><span class="p">,</span>
+                 <span class="n">auto_populate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">train_data_prop</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
+                 <span class="n">train_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">test_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">label_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+                 <span class="n">try_load_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">save_state_dict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">rolling_avg_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation here</span>
+
+<span class="sd">        :param lstm_hidden_size:</span>
+<span class="sd">        :param lstm_num_layers:</span>
+<span class="sd">        :param ticker:</span>
+<span class="sd">        :param to_compare:</span>
+<span class="sd">        :param train_start_date:</span>
+<span class="sd">        :param train_end_date:</span>
+<span class="sd">        :param sequence_segment_length:</span>
+<span class="sd">        :param drop_prob:</span>
+<span class="sd">        :param device:</span>
+<span class="sd">        :param auto_populate:</span>
+<span class="sd">        :param train_data_prop:</span>
+<span class="sd">        :param lr:</span>
+<span class="sd">        :param train_batch_size:</span>
+<span class="sd">        :param test_batch_size:</span>
+<span class="sd">        :param num_workers:</span>
+<span class="sd">        :param label_length:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StockRNN</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># variable indicating success of calling self.to(DEVICE), where 0 indicates that it hasn&#39;t been tried yet, -1 </span>
+        <span class="c1"># indicates that it failed, and 1 indicates that it was successful  </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># __init__ params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_hidden_size</span> <span class="o">=</span> <span class="n">lstm_hidden_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_num_layers</span> <span class="o">=</span> <span class="n">lstm_num_layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drop_prob</span> <span class="o">=</span> <span class="n">drop_prob</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ticker</span> <span class="o">=</span> <span class="n">ticker</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span> <span class="o">=</span> <span class="n">train_start_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span> <span class="o">=</span> <span class="n">train_end_date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">=</span> <span class="n">sequence_segment_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_populate</span> <span class="o">=</span> <span class="n">auto_populate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_data_prop</span> <span class="o">=</span> <span class="n">train_data_prop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">=</span> <span class="n">lr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_batch_size</span> <span class="o">=</span> <span class="n">train_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_batch_size</span> <span class="o">=</span> <span class="n">test_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_state_dict</span> <span class="o">=</span> <span class="n">save_state_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span> <span class="o">=</span> <span class="n">rolling_avg_length</span>
+
+        <span class="k">if</span> <span class="n">label_length</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Label length was specified to be </span><span class="si">{}</span><span class="s2">, but cannot be &gt;= self.sequence_segment_length; setting &quot;</span>
+                  <span class="s2">&quot;self.label_length to self.sequence_segment_length - 1.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label_length</span> <span class="o">=</span> <span class="n">label_length</span>
+
+        <span class="c1"># company in index 0 is the company whose stock is being predicted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">companies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Company</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span><span class="p">)]</span>
+
+        <span class="n">start_date_changes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">end_date_changes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">to_compare</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">to_compare</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">company_ticker</span> <span class="ow">in</span> <span class="n">to_compare</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Company</span><span class="p">(</span><span class="n">company_ticker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;There was a KeyError exception raised when accessing data for the ticker </span><span class="si">{}</span><span class="s2">; will skip this &quot;</span>
+                          <span class="s2">&quot;ticker&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">company_ticker</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="n">_libs</span><span class="o">.</span><span class="n">tslibs</span><span class="o">.</span><span class="n">np_datetime</span><span class="o">.</span><span class="n">OutOfBoundsDatetime</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;There was a _libs.tslibs.np_datetime.OutOfBoundsDatetime exception raised when accessing &quot;</span>
+                          <span class="s2">&quot;data for the ticker </span><span class="si">{}</span><span class="s2">; will skip this ticker&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">company_ticker</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="n">RemoteDataError</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;There was a RemoteDataError when fetching data for ticker &#39;</span><span class="si">{}</span><span class="s2">&#39;; will skip this ticker&quot;</span>
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">company_ticker</span><span class="p">))</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start_date_changed</span><span class="p">:</span>
+                    <span class="n">start_date_changes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start_date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">end_date_changed</span><span class="p">:</span>
+                    <span class="n">end_date_changes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">end_date</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">start_date_changes</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># revise the start date of all of the data if necessary</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">start_date_changes</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">company</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">:</span>
+                <span class="n">company</span><span class="o">.</span><span class="n">revise_start_date</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data did not exist for every ticker at start date of </span><span class="si">{}</span><span class="s2">; revising to the most recent starting time &quot;</span>
+                  <span class="s2">&quot;(common among all companies&#39; data) of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">train_start_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">),</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">)))</span>
+        <span class="c1"># revise the end date of all of the data</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">end_date_changes</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">end_date_changes</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">company</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">:</span>
+                <span class="n">company</span><span class="o">.</span><span class="n">revise_end_date</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data did not exist for every ticker at end date of </span><span class="si">{}</span><span class="s2">; revising to the earliest ending time &quot;</span>
+                  <span class="s2">&quot;(common among all companies&#39; data) of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">train_end_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">),</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_date_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_start_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_date_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_end_date</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="n">ZERO_TIME</span><span class="p">)</span>
+
+        <span class="c1"># sting that describes the parameters for this model such that files for weights can be successfully loaded</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">considering_string</span> <span class="o">=</span> <span class="s2">&quot;_CONSIDERING_&quot;</span> <span class="o">+</span> <span class="s2">&quot;&amp;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">company</span><span class="p">:</span>
+                                                                     <span class="n">company</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">1</span><span class="p">:])))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">considering_string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="s2">&quot;MODEL_FOR_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span> <span class="o">+</span> <span class="n">considering_string</span> <span class="o">+</span> \
+                          <span class="s2">&quot;_WITH_lstm_hidden_size_</span><span class="si">{}</span><span class="s2">_lstm_num_layers_</span><span class="si">{}</span><span class="s2">_input_size_</span><span class="si">{}</span><span class="s2">_rolling_avg_length_</span><span class="si">{}</span><span class="s2">_sequence_&quot;</span> \
+                          <span class="s2">&quot;segment_length_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">lstm_hidden_size</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">lstm_num_layers</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_weights_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span> <span class="o">+</span> <span class="s2">&quot;.bin&quot;</span><span class="p">)</span>
+
+        <span class="c1"># initialize objects used during forward pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lstm_hidden_size</span><span class="p">,</span>
+                            <span class="n">num_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lstm_num_layers</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_prob</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_dropout</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_prob</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc_1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lstm_hidden_size</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc_2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tanh</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">()</span>
+        <span class="c1"># self.rescaler = Rescaler(-0.5, 0.5)</span>
+
+        <span class="c1"># initialize attributes with placeholder arrays</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_loader_len</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_loader_len</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># initialize optimizer and loss</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_populate</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">populate_daily_stock_data</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">populate_test_train</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">populate_loaders</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">try_load_weights</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_weights_path</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loded weights from file&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Tried loading state dict from file but could not find cached file&quot;</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: Could not load state dict for an unknown reason&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__togpu__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">successful</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the value of :attr:`__togpu_works__`, which is used in such a way that expensive error catching isn&#39;t run</span>
+<span class="sd">        every epoch of training.</span>
+
+<span class="sd">        :param successful: boolean for whether ``.to(gpu)`` was called successfully</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">successful</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+<div class="viewcode-block" id="StockRNN.peek_dataset"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.peek_dataset">[docs]</a>    <span class="k">def</span> <span class="nf">peek_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a simple line plot of the stock data</span>
+
+<span class="sd">        :param figsize: tuple of integers for :class:`plt.subplots` ``figsize`` argument</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; closing price day-over-day </span><span class="si">% c</span><span class="s2">hange from </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span>
+                                                                                           <span class="bp">self</span><span class="o">.</span><span class="n">start_date_str</span><span class="p">,</span>
+                                                                                           <span class="bp">self</span><span class="o">.</span><span class="n">end_date_str</span><span class="p">))</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Price (USD)&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                <span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; closing price day-over-day </span><span class="si">% c</span><span class="s2">hange from </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span>
+                                                                                <span class="bp">self</span><span class="o">.</span><span class="n">start_date_str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_date_str</span><span class="p">))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Price (USD)&quot;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">company</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">):</span>
+                <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="p">:],</span> <span class="n">label</span><span class="o">=</span><span class="n">company</span><span class="o">.</span><span class="n">ticker</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                <span class="s2">&quot;All companies&#39; closing price day-over-day </span><span class="si">% c</span><span class="s2">hange from </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_date_str</span><span class="p">,</span>
+                                                                                          <span class="bp">self</span><span class="o">.</span><span class="n">end_date_str</span><span class="p">))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Price (USD)&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StockRNN.populate_daily_stock_data"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.populate_daily_stock_data">[docs]</a>    <span class="k">def</span> <span class="nf">populate_daily_stock_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populates ``self.daily_stock_data`` with the day-over-day percent change of the closing stock prices. The data</span>
+<span class="sd">        for each company is truncated such that each company&#39;s array of data is the same length as the rest and such</span>
+<span class="sd">        that their length is divisible by :attr:` sequence_segment_length`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">daily_stock_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">daily_stock_data_lens</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">data_is_of_same_len</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">company</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">:</span>
+            <span class="n">daily_stock_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">company</span><span class="o">.</span><span class="n">return_numpy_array_of_company_daily_stock_percent_change</span><span class="p">(</span>
+                <span class="n">rolling_avg_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rolling_avg_length</span><span class="p">))</span>
+            <span class="n">daily_stock_data_lens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">daily_stock_data_lens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">daily_stock_data_lens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">data_is_of_same_len</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">daily_stock_data_lens</span><span class="p">)</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_is_of_same_len</span> <span class="ow">or</span> <span class="n">mod</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">-=</span> <span class="n">mod</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">):</span>
+                <span class="n">daily_stock_data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">daily_stock_data</span><span class="p">[</span><span class="n">c</span><span class="p">][</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">data_len</span><span class="p">:]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The specified segment length for the data to be split up into, </span><span class="si">{}</span><span class="s2">, would result in &quot;</span>
+                  <span class="s2">&quot;a dataset of only one segment because the self.daily_stock_data array is of length </span><span class="si">{}</span><span class="s2">&quot;</span>
+                  <span class="s2">&quot;; a minimum of 2 must be created for a train/test split (although there clearly needs&quot;</span>
+                  <span class="s2">&quot; to be more than 2 data points to train the model).&quot;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">AssertionError</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">daily_stock_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StockRNN.populate_test_train"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.populate_test_train">[docs]</a>    <span class="k">def</span> <span class="nf">populate_test_train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rand_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populates ``self.train_data`` and ``self.test_data`` tensors with complimentary subsets of the sequences of</span>
+<span class="sd">        ``self.daily_stock_data``, where the sequences are the ``self.sequence_length`` length sequences of data that,</span>
+<span class="sd">        when  concatenated, comprise ``self.daily_stock_data``.</span>
+
+<span class="sd">        :param rand_seed: value to seed the random number generator; if -1 (or any value &lt; 0), then do not</span>
+<span class="sd">            seed the random number generator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_segments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span>  <span class="c1"># floor divide is used to return an</span>
+        <span class="c1"># integer (should be no rounding)</span>
+
+        <span class="c1"># shape of segmented_data: (batch_size, num_features, sequence_length)</span>
+        <span class="n">segmented_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_segments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">):</span>
+            <span class="n">segmented_data</span><span class="p">[:,</span> <span class="n">c</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="p">[</span><span class="n">c</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">num_segments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">))</span>
+        <span class="n">num_train_segments</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">num_segments</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_data_prop</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_segments</span> <span class="o">==</span> <span class="n">num_train_segments</span><span class="p">:</span>
+            <span class="c1"># If true, this means that there would be no data for testing (because the train/test ratio is very high</span>
+            <span class="c1"># and/or there is too little data given self.sequence_segment_length</span>
+            <span class="n">num_train_segments</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">rand_seed</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">rand_seed</span><span class="p">)</span>  <span class="c1"># useful for unit testing</span>
+
+        <span class="n">all_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_segments</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">all_indices</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_sample_indices</span> <span class="o">=</span> <span class="n">all_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">num_train_segments</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_sample_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_segments</span><span class="p">))</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_sample_indices</span><span class="p">)))</span>
+        <span class="k">del</span> <span class="n">all_indices</span>
+
+        <span class="c1"># X_train: Tensor = torch.from_numpy(self.rescaler.rescale_train(segmented_data[self.train_sample_indices, :, :])).float()</span>
+        <span class="c1"># X_test: Tensor = torch.from_numpy(self.rescaler.rescale_test(segmented_data[self.test_sample_indices, :, :])).float()</span>
+        <span class="n">X_train</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">segmented_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">train_sample_indices</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="n">X_test</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">segmented_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">test_sample_indices</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="k">del</span> <span class="n">segmented_data</span>
+        <span class="c1"># the data for the labels is the data in the first position of the features dimension</span>
+        <span class="n">y_train</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">X_train</span><span class="p">[:,</span> <span class="p">:,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">label_length</span><span class="p">:]</span>
+        <span class="n">y_test</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">=</span> <span class="n">X_test</span><span class="p">[:,</span> <span class="p">:,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">label_length</span><span class="p">:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StockRNN.return_loaders"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.return_loaders">[docs]</a>    <span class="k">def</span> <span class="nf">return_loaders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">DataLoader</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the :ref:`torch.utils.data.Dataloader` objects for the training and test sets</span>
+
+<span class="sd">        :return: training DataLoader</span>
+<span class="sd">        :return: testing DataLoader</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="n">DataLoader</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span><span class="p">,</span>
+                    <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_batch_size</span><span class="p">,</span>
+                    <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+                    <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># speeds up the host-to-device transfer</span>
+                <span class="p">),</span>
+                <span class="n">DataLoader</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span><span class="p">,</span>
+                    <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_batch_size</span><span class="p">,</span>
+                    <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+                    <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># speeds up the host-to-device transfer</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="n">DataLoader</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_set</span><span class="p">,</span>
+                    <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_batch_size</span><span class="p">,</span>
+                    <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span>
+                <span class="p">),</span>
+                <span class="n">DataLoader</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">test_set</span><span class="p">,</span>
+                    <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_batch_size</span><span class="p">,</span>
+                    <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span>
+                <span class="p">)</span>
+            <span class="p">]</span></div>
+
+<div class="viewcode-block" id="StockRNN.populate_loaders"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.populate_loaders">[docs]</a>    <span class="k">def</span> <span class="nf">populate_loaders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populates :attr:`train_loader`, :attr:`test_laoder`, :attr:`train_loader_len`, and `:attr:`test_loader_len`</span>
+<span class="sd">        attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_loaders</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_loader_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_loader_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StockRNN.forward"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">predict_beyond</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Completes a forward pass of data through the network. The tensor passed in is of shape (batch size, features,</span>
+<span class="sd">        sequence length), and the output is of shape (batch size, 1, sequence length). The data is passed through a LSTM</span>
+<span class="sd">        layer with an arbitrary number of layers and an arbitrary hidden size (as defined by :attr:`lstm_hidden_size`</span>
+<span class="sd">        and :attr:`lstm_num_layers`</span>
+
+<span class="sd">        :param X: input matrix of data of shape: (batch size, features (number of companies), sequence length)</span>
+<span class="sd">        :param predict_beyond: TODO</span>
+<span class="sd">        :return: output of the forward pass of the data through the network (same shape as input)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># input x needs to be converted from (batch_size, features, sequence_length) to</span>
+        <span class="c1"># (batch_size, sequence_length, features)</span>
+
+        <span class="n">output</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_dropout</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>  <span class="c1"># dropout built into LSTM object doesnt work on last layer of LSTM</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_1</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_2</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">predict_beyond</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">output</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">predict_beyond</span><span class="p">,</span>
+                                     <span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">new_output</span><span class="p">[:,</span> <span class="p">:</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">output</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">predict_beyond</span><span class="p">):</span>
+                <span class="n">predict_beyond_out</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">output</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:],</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+                <span class="n">predict_beyond_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_1</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">predict_beyond_out</span><span class="p">)</span>
+                <span class="n">predict_beyond_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">predict_beyond_out</span><span class="p">)</span>
+                <span class="n">predict_beyond_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc_2</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">predict_beyond_out</span><span class="p">)</span>
+                <span class="n">predict_beyond_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">predict_beyond_out</span><span class="p">)</span>
+                <span class="n">new_output</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">predict_beyond_out</span>
+            <span class="n">new_output</span> <span class="o">=</span> <span class="n">new_output</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">new_output</span></div>
+
+<div class="viewcode-block" id="StockRNN.do_training"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.do_training">[docs]</a>    <span class="k">def</span> <span class="nf">do_training</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plot_output</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="n">plot_output_figsize</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">plot_loss</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="n">plot_loss_figsize</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method trains the network using data in :attr:`train_loader` and checks against the data in</span>
+<span class="sd">        :attr:`test_loader` at the end of each epoch.. The forward pass through the network produces sequences of the</span>
+<span class="sd">        same length as the input sequences. The sequences in the label data are of length :attr:`label_length`, so the</span>
+<span class="sd">        output sequences are  cropped to length :attr:`label_length` before being passed through the MSE loss function.</span>
+<span class="sd">        Because each element of the output sequence at position ``n`` is a prediction of the input element ``n+1``, the</span>
+<span class="sd">        cropped windows of  the output sequences are given by the window that terminates at the second-to-last element</span>
+<span class="sd">        of the output sequence.</span>
+
+<span class="sd">        :param num_epochs: number of epochs to to run the training for</span>
+<span class="sd">        :param verbose: if true, print diagnostic progress updates and final training and test loss</span>
+<span class="sd">        :param plot_output: if true, plot the results of the final pass through the LSTM with a randomly selected</span>
+<span class="sd">        segment of data</span>
+<span class="sd">        :param plot_output_figsize: ``figsize`` argument for the output plot</span>
+<span class="sd">        :param plot_loss: if true, plot the training and test loss</span>
+<span class="sd">        :param plot_loss_figsize: ``figsize`` argument for the loss plot</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># self.train(True)</span>
+        <span class="n">epoch_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">pass_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">training_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">train_loss_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">train_loss_list_idx</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">test_loss_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">test_loss_list_idx</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">num_epochs</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Specified number of epochs is &lt;= 0; it must be &gt; 0, so it is set to 1.&quot;</span><span class="p">)</span>
+            <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">while</span> <span class="n">epoch_num</span> <span class="o">&lt;=</span> <span class="n">num_epochs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Epoch num: </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">: &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch_num</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">train_inputs</span><span class="p">,</span> <span class="n">train_labels</span> <span class="o">=</span> <span class="n">data</span>
+                <span class="c1"># send inputs and labels to the gpu if possible</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">train_inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+                    <span class="n">train_labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+                <span class="c1"># otherwise, ``inputs`` and ``labels`` are already tensors</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">train_inputs</span><span class="p">)</span>
+                <span class="n">train_loss_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">output</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">train_labels</span><span class="p">)</span>
+
+                <span class="n">train_loss_size</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+                <span class="n">train_loss_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_loss_size</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+                <span class="n">train_loss_list_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pass_num</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                <span class="n">pass_num</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">percent</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_loader_len</span><span class="p">)</span>
+                    <span class="n">percent_floored_by_10</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="p">(</span><span class="n">percent</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span>
+                    <span class="n">front</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> &gt; </span><span class="si">{}</span><span class="s2">% [&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">percent</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="n">percent_floored_by_10</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="p">(</span>
+                                <span class="mi">10</span> <span class="o">-</span> <span class="n">percent_floored_by_10</span><span class="p">)</span>
+                        <span class="o">+</span> <span class="s2">&quot;] train loss size = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">train_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+            <span class="c1"># do a run on the test set at the end of every epoch:</span>
+            <span class="n">test_loss_this_epoch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">subplot_val</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">epoch_num</span> <span class="o">==</span> <span class="n">num_epochs</span> <span class="ow">and</span> <span class="n">plot_output</span><span class="p">:</span>
+                <span class="n">subplot_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader_len</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_loader_len</span> <span class="o">&lt;=</span> <span class="mi">3</span> <span class="k">else</span> <span class="mi">3</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">subplot_val</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">plot_output_figsize</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">subplot_val</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">,</span> <span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">test_inputs</span><span class="p">,</span> <span class="n">test_labels</span> <span class="o">=</span> <span class="n">data</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__togpu_works__</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># send inputs and labels to the gpu if possible</span>
+                    <span class="n">test_inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+                    <span class="n">test_labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">test_inputs</span><span class="p">)</span>
+                <span class="n">test_loss_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">output</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">label_length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">test_labels</span><span class="p">)</span>
+                <span class="n">test_loss_this_epoch</span> <span class="o">+=</span> <span class="n">test_loss_size</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">epoch_num</span> <span class="o">==</span> <span class="n">num_epochs</span> <span class="ow">and</span> <span class="n">plot_output</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">subplot_val</span><span class="p">:</span>
+                    <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">test_inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                                 <span class="n">label</span><span class="o">=</span><span class="s2">&quot;orig&quot;</span><span class="p">)</span>
+                    <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                                 <span class="n">label</span><span class="o">=</span><span class="s2">&quot;pred&quot;</span><span class="p">)</span>
+                    <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                        <span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; closing price day-over-day </span><span class="si">% c</span><span class="s2">hange</span><span class="se">\n</span><span class="s2">from </span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">: Example </span><span class="si">{}</span><span class="s2"> of</span><span class="se">\n</span><span class="s2">Original vs. Model &quot;</span>
+                        <span class="s2">&quot;Output&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_date_str</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_date_str</span><span class="p">,</span> <span class="n">i</span><span class="p">))</span>
+                    <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+                    <span class="n">axes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;% Change of Stock (USD)&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">epoch_num</span> <span class="o">==</span> <span class="n">num_epochs</span> <span class="ow">and</span> <span class="n">plot_output</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+            <span class="n">test_loss_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_loss_this_epoch</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_loader</span><span class="p">))</span>
+            <span class="n">test_loss_list_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pass_num</span><span class="p">)</span>
+            <span class="n">epoch_num</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; | test loss size = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">test_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-----------------</span><span class="se">\n</span><span class="s2">&quot;</span>
+                  <span class="s2">&quot;Finished training</span><span class="se">\n</span><span class="s2">&quot;</span>
+                  <span class="s2">&quot; &gt;         Duration: </span><span class="si">{}</span><span class="s2">s</span><span class="se">\n</span><span class="s2">&quot;</span>
+                  <span class="s2">&quot; &gt; Final train loss: </span><span class="si">{}</span><span class="s2"> (delta of </span><span class="si">{}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
+                  <span class="s2">&quot; &gt;  Final test loss: </span><span class="si">{}</span><span class="s2"> (delta of </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">training_start_time</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                                                                 <span class="nb">round</span><span class="p">(</span><span class="n">train_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                                                                 <span class="nb">round</span><span class="p">(</span><span class="n">train_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">train_loss_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                                                                 <span class="nb">round</span><span class="p">(</span><span class="n">test_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">4</span><span class="p">),</span>
+                                                                 <span class="nb">round</span><span class="p">(</span><span class="n">test_loss_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">test_loss_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">4</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_state_dict</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">)):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_weights_path</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; &gt; (saved model weights to &#39;</span><span class="si">{}</span><span class="s2">&#39; folder)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s2">&quot;.cache&quot;</span><span class="p">)))</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: an unknown exception occured when trying to save model weights&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot_loss</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">plot_loss_figsize</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">train_loss_list_idx</span><span class="p">,</span> <span class="n">train_loss_list</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;train&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">test_loss_list_idx</span><span class="p">,</span> <span class="n">test_loss_list</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Train data forward pass index&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Loss magnitude&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Train and Testing Data Loss over Training Duration&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StockRNN.make_prediction_with_validation"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.make_prediction_with_validation">[docs]</a>    <span class="k">def</span> <span class="nf">make_prediction_with_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predict_beyond</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">data_start_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values</span>
+<span class="sd">         of the stock are shown alongside.</span>
+
+<span class="sd">        :param predict_beyond: days to predict ahead in the future</span>
+<span class="sd">        :param num_plots:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_and_pred_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="n">predict_beyond</span>
+        <span class="k">if</span> <span class="n">data_start_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data_start_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">input_and_pred_len</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">)</span>
+
+        <span class="n">start_train_datetimes</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># holds datetime objects corresponding to the data_start_indices</span>
+        <span class="n">end_pred_datetimes</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># holds datetime objects corresponding to the data_start_indices</span>
+        <span class="n">pred_data_start_indicies</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># indices for the start of predictions</span>
+        <span class="n">train_and_actual_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_plots</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_companies</span><span class="p">,</span> <span class="n">input_and_pred_len</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_plots</span><span class="p">):</span>
+            <span class="n">train_and_actual_data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">daily_stock_data</span><span class="p">[:,</span> <span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span><span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">input_and_pred_len</span><span class="p">])</span>
+            <span class="n">start_train_datetimes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_date_at_index</span><span class="p">(</span><span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+            <span class="n">end_pred_datetimes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_date_at_index</span><span class="p">(</span><span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">input_and_pred_len</span><span class="p">))</span>
+            <span class="n">pred_data_start_indicies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">input_and_pred_len</span> <span class="o">-</span> <span class="n">predict_beyond</span><span class="p">)</span>
+
+        <span class="c1"># pass in the data for training</span>
+        <span class="n">output_numpy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">train_and_actual_data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="p">(</span><span class="n">predict_beyond</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)],</span> <span class="n">predict_beyond</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span>\
+            <span class="n">numpy</span><span class="p">()</span>
+
+        <span class="n">orig_stock_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">pred_stock_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">actual_stock_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">disparity_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_plots</span><span class="p">):</span>
+            <span class="n">orig_stock_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="s2">&quot;Close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span>
+                                       <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">data_start_indices</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">pred_data_start_indicies</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">))])</span>
+            <span class="n">pred_stock_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reconstruct_stock_from_percent_change</span><span class="p">(</span><span class="n">output_numpy</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">predict_beyond</span><span class="p">:],</span>
+                                                                        <span class="n">initial_condition_index</span><span class="o">=</span><span class="p">(</span>
+                                                                                <span class="n">pred_data_start_indicies</span><span class="p">[</span>
+                                                                                    <span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="n">actual_stock_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data_frame</span><span class="p">[</span><span class="s2">&quot;Close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span>
+                <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">pred_data_start_indicies</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">pred_data_start_indicies</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">predict_beyond</span><span class="p">))]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">disparity_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pred_stock_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">actual_stock_list</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">input_and_pred_len</span><span class="p">,</span> <span class="n">start_train_datetimes</span><span class="p">,</span> <span class="n">end_pred_datetimes</span><span class="p">,</span> <span class="n">pred_data_start_indicies</span><span class="p">,</span> \
+               <span class="n">train_and_actual_data</span><span class="p">,</span> <span class="n">output_numpy</span><span class="p">,</span> <span class="n">orig_stock_list</span><span class="p">,</span> <span class="n">pred_stock_list</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">,</span> <span class="n">disparity_list</span></div>
+
+<div class="viewcode-block" id="StockRNN.check_sliding_window_valid_at_index"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.check_sliding_window_valid_at_index">[docs]</a>    <span class="k">def</span> <span class="nf">check_sliding_window_valid_at_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">end_pred_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">end_pred_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;latest_data_index is None, so will set to minimum possible value&quot;</span><span class="p">)</span>
+            <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_pred_index</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="p">(</span><span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: latest_data_index, when combined with the provided pred_beyond_range, will yield negative&quot;</span>
+                  <span class="s2">&quot;indices for training data start points; revising to smallest possible value&quot;</span><span class="p">)</span>
+            <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">+</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_pred_index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: latest_data_index is too large for dataset; revising to largest possible value&quot;</span><span class="p">)</span>
+            <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_len</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">end_pred_index</span></div>
+
+<div class="viewcode-block" id="StockRNN.generate_predicted_distribution"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.generate_predicted_distribution">[docs]</a>    <span class="k">def</span> <span class="nf">generate_predicted_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">end_pred_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_sliding_window_valid_at_index</span><span class="p">(</span><span class="n">end_pred_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">)</span>
+        <span class="n">pred_beyond_range_delta</span> <span class="o">=</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">predicted_value_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="c1"># the start of the desired index is the end value index decreased by the length of the prediction and the</span>
+            <span class="c1"># training sequence length; the start index is then shifted back as the number of days that is predicted</span>
+            <span class="c1"># beyond increases</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">pred_stock_list</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_prediction_with_validation</span><span class="p">(</span><span class="n">i</span><span class="p">,</span>
+                            <span class="n">num_plots</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">data_start_indices</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">end_pred_index</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">-</span>
+                                                                      <span class="n">pred_beyond_range_delta</span> <span class="o">-</span> <span class="n">i</span><span class="p">]))</span>
+            <span class="n">predicted_value_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pred_stock_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">debug</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">actual_stock_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">predicted_value_list</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="StockRNN.pred_in_conj"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.pred_in_conj">[docs]</a>    <span class="k">def</span> <span class="nf">pred_in_conj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_of_pred_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n_days</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mean_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">std_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_days</span><span class="p">):</span>
+            <span class="n">end_pred_index</span> <span class="o">=</span> <span class="n">start_of_pred_idx</span> <span class="o">+</span> <span class="n">n</span>
+            <span class="n">end_pred_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_sliding_window_valid_at_index</span><span class="p">(</span><span class="n">end_pred_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">)</span>
+            <span class="n">predicted_value_list</span><span class="p">,</span> <span class="n">actual_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_predicted_distribution</span><span class="p">(</span><span class="n">end_pred_index</span><span class="p">,</span>
+                                                                                      <span class="n">pred_beyond_range</span><span class="p">)</span>
+            <span class="n">mean_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">predicted_value_list</span><span class="p">))</span>
+            <span class="n">std_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">predicted_value_list</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">mean_list</span><span class="p">,</span> <span class="n">std_list</span></div>
+
+<div class="viewcode-block" id="StockRNN.plot_predicted_distribution"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.plot_predicted_distribution">[docs]</a>    <span class="k">def</span> <span class="nf">plot_predicted_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latest_data_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">predicted_value_list</span><span class="p">,</span> <span class="n">actual_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_predicted_distribution</span><span class="p">(</span><span class="n">latest_data_index</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">)</span>
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">round</span><span class="p">((</span><span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_bins</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">n_bins</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">predicted_value_list</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">actual_value</span><span class="p">,</span> <span class="n">actual_value</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_beyond_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="s2">&quot;-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="StockRNN.plot_prediction_with_validation"><a class="viewcode-back" href="../../_build/src.html#src.StockRNN.StockRNN.plot_prediction_with_validation">[docs]</a>    <span class="k">def</span> <span class="nf">plot_prediction_with_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predict_beyond</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">plt_scl</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TODO: documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">forward_seq_len</span><span class="p">,</span> <span class="n">start_dates</span><span class="p">,</span> <span class="n">end_dates</span><span class="p">,</span> <span class="n">pred_data_start_indicies</span><span class="p">,</span> <span class="n">make_pred_data</span><span class="p">,</span> \
+        <span class="n">output_numpy</span><span class="p">,</span> <span class="n">orig_stock_list</span><span class="p">,</span> <span class="n">pred_stock_list</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">,</span> <span class="n">disparity_list</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_prediction_with_validation</span><span class="p">(</span><span class="n">predict_beyond</span><span class="p">,</span> <span class="n">num_plots</span><span class="p">)</span>
+        <span class="n">pred_beyond_plot_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">,</span> <span class="n">forward_seq_len</span><span class="p">)</span>
+        <span class="n">pred_over_input_plot_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">)</span>
+        <span class="n">input_plot_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">)</span>
+        <span class="n">disparity_plot_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">predict_beyond</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">num_plots</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">plt_scl</span><span class="p">,</span> <span class="n">plt_scl</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_plots</span><span class="p">):</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pred_beyond_plot_indices</span><span class="p">,</span> <span class="n">output_numpy</span><span class="p">[</span><span class="n">ax</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">predict_beyond</span><span class="p">:],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                             <span class="n">label</span><span class="o">=</span><span class="s2">&quot;pred. beyond&quot;</span><span class="p">,</span>
+                             <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pred_over_input_plot_indices</span><span class="p">,</span> <span class="n">output_numpy</span><span class="p">[</span><span class="n">ax</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span>
+                             <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span>
+                             <span class="n">label</span><span class="o">=</span><span class="s2">&quot;pred. over input&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">input_plot_indices</span><span class="p">,</span>
+                             <span class="n">make_pred_data</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="n">ax</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span>
+                             <span class="n">label</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pred_beyond_plot_indices</span><span class="p">,</span>
+                             <span class="n">make_pred_data</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="n">ax</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence_segment_length</span><span class="p">:],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;actual&quot;</span><span class="p">,</span>
+                             <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> </span><span class="si">% c</span><span class="s2">hange from</span><span class="se">\n</span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span>
+                                                                      <span class="n">start_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">end_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">]))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Business days since </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">start_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">]))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;% Change&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pred_beyond_plot_indices</span><span class="p">,</span> <span class="n">pred_stock_list</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span>
+                             <span class="n">label</span><span class="o">=</span><span class="s2">&quot;pred. beyond&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">input_plot_indices</span><span class="p">,</span> <span class="n">orig_stock_list</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pred_beyond_plot_indices</span><span class="p">,</span> <span class="n">actual_stock_list</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;actual&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> stock from</span><span class="se">\n</span><span class="si">{}</span><span class="s2"> to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">companies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ticker</span><span class="p">,</span> <span class="n">start_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span>
+                                                                   <span class="n">end_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">]))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Business days since </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">start_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">]))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Stock Price&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">disparity_plot_indices</span><span class="p">,</span> <span class="n">disparity_list</span><span class="p">[</span><span class="n">ax</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;disparity&quot;</span><span class="p">,</span>
+                             <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Disparity of Predicted and Actual Stock&quot;</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Num. predicted days out </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">start_dates</span><span class="p">[</span><span class="n">ax</span><span class="p">]))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">ax</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Absolute difference between</span><span class="se">\n</span><span class="s2">prediction and reality&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">StockRNN</span>
+
+    <span class="c1"># set to switch between loading saved weights if available</span>
+    <span class="n">try_load_weights</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">StockRNN</span><span class="p">(</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="n">to_compare</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GOOGL&quot;</span><span class="p">,</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span> <span class="s2">&quot;MSI&quot;</span><span class="p">],</span> <span class="n">train_start_date</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2012</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                     <span class="n">train_end_date</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2019</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">try_load_weights</span><span class="o">=</span><span class="n">try_load_weights</span><span class="p">)</span>
+    <span class="c1"># model = StockRNN(&quot;dummy&quot;)</span>
+    <span class="c1"># model.peek_dataset()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">DEVICE</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">__togpu__</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">TO_GPU_FAIL_MSG</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">TO_GPU_FAIL_MSG</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">__togpu__</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># model.do_training(num_epochs=100)</span>
+
+    <span class="c1"># model.eval()</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">plot_prediction_with_validation</span><span class="p">()</span>
+    <span class="c1"># model.plot_predicted_distribution(12)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">pred_in_conj</span><span class="p">(</span><span class="mi">123</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Duncan Mazza and Shashank Swaminathan
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
