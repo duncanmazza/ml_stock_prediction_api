@@ -606,9 +606,9 @@ class StockRNN(nn.Module):
             print("WARNING: latest_data_index, when combined with the provided pred_beyond_range, will yield negative"
                   "indices for training data start points; revising to smallest possible value")
             end_pred_index = self.sequence_segment_length + pred_beyond_range[1]
-        if end_pred_index > self.data_len:
+        if end_pred_index >= self.data_len:
             print("WARNING: latest_data_index is too large for dataset; revising to largest possible value")
-            end_pred_index = self.data_len
+            end_pred_index = self.data_len - 1
         if end_pred_index > self.data_len - self.sequence_segment_length:
             print("WARNING: latest_data_index is too large for a real value to be pulled from the dataset to compare; "
                   "will return -1 as the actual data point")
