@@ -6,16 +6,26 @@
 Welcome to the Stock Prediction API documentation
 =================================================
 
+Introduction
+============
+
+notes/about.rst
+
 .. toctree::
    :glob:
    :maxdepth: 2
    :caption: Notes
 
-   notes/*
+   notes/LSTM.rst
+   notes/GPM.rst
+   notes/usage.rst
+   notes/examples.rst
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   All of our module's code is documented and can be found here
 
    _build/modules/
 
