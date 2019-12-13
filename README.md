@@ -13,7 +13,7 @@ pip install -r requirements.txt
 
 **Make sure that you are using Python 3.6 or later!** Our code is not backward compatable because we make use of type declarations in 3.6.
 
-
+**TO BUILD THE DOCS LOCALLY go through the docs README [here](docsrc/README.md)**
 
 The API is interactive, and runs off of a Bokeh server. To run it, open terminal and move to the root of the tool. Then, run the following line::
 
