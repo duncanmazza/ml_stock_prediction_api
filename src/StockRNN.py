@@ -54,7 +54,7 @@ class StockRNN(nn.Module):
 
     def __init__(self, ticker: str, lstm_hidden_size: int = 100, lstm_num_layers: int = 2, to_compare: [str, ] = None,
                  train_start_date: datetime = datetime(2017, 1, 1), train_end_date: datetime = datetime(2018, 1, 1),
-                 sequence_segment_length: int = 50, drop_prob: float = 0.5, device: str = DEVICE,
+                 sequence_segment_length: int = 50, drop_prob: float = 0.3, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
                  train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 30,
                  try_load_weights: bool = False, save_state_dict: bool = True, rolling_avg_length: int = 10):
@@ -550,37 +550,31 @@ class StockRNN(nn.Module):
     def make_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2,
                                         data_start_indices: np.ndarray = None):
         r"""
-        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out. The sequence length
-        of the data passed to the forward pass is given by ``self.sequence_segment_length - predict_beyond``, and the
-        actual values of the stock are shown alongside.
+        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values
+         of the stock are shown alongside.
 
         :param predict_beyond: days to predict ahead in the future
         :param num_plots:
         :return:
         """
-        # self.eval()  # equivalent to calling self.train(False)
-        forward_seq_len = self.sequence_segment_length + predict_beyond
+        input_and_pred_len = self.sequence_segment_length + predict_beyond
         if data_start_indices is None:
-            data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - forward_seq_len, num_plots)
+            data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - input_and_pred_len, num_plots)
 
-        start_dates = []
-        end_dates = []
-        pred_data_start_indicies = []
-        make_pred_data = torch.zeros((num_plots, self.num_companies, forward_seq_len))
+        start_train_datetimes = []  # holds datetime objects corresponding to the data_start_indices
+        end_pred_datetimes = []  # holds datetime objects corresponding to the data_start_indices
+        pred_data_start_indicies = []  # indices for the start of predictions
+        train_and_actual_data = torch.zeros((num_plots, self.num_companies, input_and_pred_len))
         for i in range(num_plots):
-            make_pred_data[i, :, :] = torch.from_numpy(
-                self.daily_stock_data[:, data_start_indices[i]:data_start_indices[i] + forward_seq_len])
-            start_dates.append(self.companies[0].get_date_at_index(data_start_indices[i]))
-            end_dates.append(self.companies[0].get_date_at_index(data_start_indices[i] + forward_seq_len))
-            pred_data_start_indicies.append(data_start_indices[i] + forward_seq_len - predict_beyond)
+            train_and_actual_data[i, :, :] = torch.from_numpy(
+                self.daily_stock_data[:, data_start_indices[i]:data_start_indices[i] + input_and_pred_len])
+            start_train_datetimes.append(self.companies[0].get_date_at_index(data_start_indices[i]))
+            end_pred_datetimes.append(self.companies[0].get_date_at_index(data_start_indices[i] + input_and_pred_len))
+            pred_data_start_indicies.append(data_start_indices[i] + input_and_pred_len - predict_beyond)
 
-        output = self.forward(make_pred_data[:, :, :-(predict_beyond + 1)], predict_beyond)
-        output_numpy = output.detach().numpy()
-
-        pred_beyond_plot_indices = np.arange(self.sequence_segment_length, forward_seq_len)
-        pred_over_input_plot_indices = np.arange(1, self.sequence_segment_length)
-        input_plot_indices = np.arange(0, self.sequence_segment_length)
-        disparity_plot_indices = np.arange(1, predict_beyond + 1)
+        # pass in the data for training
+        output_numpy = self.forward(train_and_actual_data[:, :, :-(predict_beyond + 1)], predict_beyond).detach().\
+            numpy()
 
         orig_stock_list = []
         pred_stock_list = []
@@ -595,59 +589,85 @@ class StockRNN(nn.Module):
                                                                                 pred_data_start_indicies[
                                                                                     i] - 1))[1:])
             actual_stock_list.append(self.companies[0].data_frame["Close"].iloc[
-                list(range(pred_data_start_indicies[i], pred_data_start_indicies[i] + predict_beyond))])
+                list(range(pred_data_start_indicies[i], pred_data_start_indicies[i] + predict_beyond))].values)
             disparity_list.append(np.abs(pred_stock_list[i] - actual_stock_list[i]))
 
-        return forward_seq_len, data_start_indices, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
-               output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
-               disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list
+        return input_and_pred_len, start_train_datetimes, end_pred_datetimes, pred_data_start_indicies, \
+               train_and_actual_data, output_numpy, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list
 
-    def generate_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+    def check_sliding_window_valid_at_index(self, end_pred_index, pred_beyond_range):
         r"""
-
+        TODO: documentation
         """
-        if latest_data_index is None:
+        if end_pred_index is None:
             print("latest_data_index is None, so will set to minimum possible value")
-            latest_data_index = self.sequence_segment_length + pred_beyond_range[1]
-        if latest_data_index - (self.sequence_segment_length + (pred_beyond_range[1] - pred_beyond_range[0])) < 0:
+            end_pred_index = self.sequence_segment_length + pred_beyond_range[1]
+        if end_pred_index - (self.sequence_segment_length + (pred_beyond_range[1] - pred_beyond_range[0])) < 0:
             print("WARNING: latest_data_index, when combined with the provided pred_beyond_range, will yield negative"
                   "indices for training data start points; revising to smallest possible value")
-            latest_data_index = self.sequence_segment_length + pred_beyond_range[1]
-        if latest_data_index > self.data_len:
+            end_pred_index = self.sequence_segment_length + pred_beyond_range[1]
+        if end_pred_index > self.data_len:
             print("WARNING: latest_data_index is too large for dataset; revising to largest possible value")
-            latest_data_index = self.data_len
-        if latest_data_index > self.data_len - self.sequence_segment_length:
+            end_pred_index = self.data_len
+        if end_pred_index > self.data_len - self.sequence_segment_length:
             print("WARNING: latest_data_index is too large for a real value to be pulled from the dataset to compare; "
                   "will return -1 as the actual data point")
 
-        predicted_value_list = []
-        for i in range(pred_beyond_range[0], pred_beyond_range[1]):
-            _, _, _, _, _, _, _, _, _, _, _, _, pred_stock_list, _, _ = self.make_prediction_with_validation(i,
-                num_plots=1, data_start_indices=np.array([latest_data_index - (pred_beyond_range[1] - i)]))
-            predicted_value_list.append(pred_stock_list[0][-1])
-        actual_value_index = latest_data_index + pred_beyond_range[0]
-        if actual_value_index > self.data_len:
-            actual_value = -1  # arbitrary value since it can't be procured from the dataset
-        else:
-            actual_value = self.companies[0].data_frame["Close"].iloc[[actual_value_index]].values[0]
-        return predicted_value_list, actual_value
+        return end_pred_index
 
-    def plot_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 30)):
+    def generate_predicted_distribution(self, end_pred_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+        r"""
+        TODO: documentation
+        """
+        end_pred_index = self.check_sliding_window_valid_at_index(end_pred_index, pred_beyond_range)
+        pred_beyond_range_delta = pred_beyond_range[1] - pred_beyond_range[0]
+        predicted_value_list = []
+        debug = []
+        for i in range(pred_beyond_range[0], pred_beyond_range[1]):
+            _, _, _, _, _, _, _, pred_stock_list, actual_stock_list, _ = self.make_prediction_with_validation(i,
+                            num_plots=1, data_start_indices=np.array([end_pred_index - pred_beyond_range_delta - i]))
+            predicted_value_list.append(pred_stock_list[0][-1])
+            debug.append(actual_stock_list[0][-1])
+        return predicted_value_list, actual_stock_list[0][-1]
+
+    def pred_in_conj(self, start_of_pred_idx, n_days, pred_beyond_range: (int, int) = (5, 10)):
+        r"""
+        TODO: documentation
+        """
+        mean_list = []
+        std_list = []
+        for n in range(n_days):
+            end_pred_index = start_of_pred_idx + n
+            end_pred_index = self.check_sliding_window_valid_at_index(end_pred_index, pred_beyond_range)
+            predicted_value_list, actual_value = self.generate_predicted_distribution(end_pred_index,
+                                                                                      pred_beyond_range)
+            mean_list.append(np.mean(predicted_value_list))
+            std_list.append(np.std(predicted_value_list))
+        return mean_list, std_list
+
+    def plot_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+        r"""
+        TODO: documentation
+        """
         predicted_value_list, actual_value = self.generate_predicted_distribution(latest_data_index, pred_beyond_range)
         n_bins = round((pred_beyond_range[1] - pred_beyond_range[0]) / 3)
         if n_bins < 3:
             n_bins = 3
         plt.hist(predicted_value_list, bins=n_bins, color="green")
-        if actual_value != -1:
-            plt.plot([actual_value, actual_value], [0, pred_beyond_range[1] - pred_beyond_range[0]], "-")
+        plt.plot([actual_value, actual_value], [0, pred_beyond_range[1] - pred_beyond_range[0]], "-")
         plt.show()
 
     def plot_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 5, plt_scl=20):
-        forward_seq_len, data_start_indices, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
-        output_numpy, pred_beyond_plot_indices, pred_over_input_plot_indices, input_plot_indices, \
-        disparity_plot_indices, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
+        r"""
+        TODO: documentation
+        """
+        forward_seq_len, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
+        output_numpy, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
             self.make_prediction_with_validation(predict_beyond, num_plots)
-
+        pred_beyond_plot_indices = np.arange(self.sequence_segment_length, forward_seq_len)
+        pred_over_input_plot_indices = np.arange(1, self.sequence_segment_length)
+        input_plot_indices = np.arange(0, self.sequence_segment_length)
+        disparity_plot_indices = np.arange(1, predict_beyond + 1)
         _, axes = plt.subplots(num_plots, 3, figsize=(plt_scl, plt_scl))
         for ax in range(num_plots):
             axes[ax][0].plot(pred_beyond_plot_indices, output_numpy[ax, 0, -predict_beyond:], color='green',
@@ -704,7 +724,8 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    model.do_training(num_epochs=100)
+    # model.do_training(num_epochs=100)
 
-    model.plot_prediction_with_validation()
-    # model.plot_predicted_distribution()
+    # model.eval()
+    # model.plot_prediction_with_validation()
+    model.plot_predicted_distribution(12)
