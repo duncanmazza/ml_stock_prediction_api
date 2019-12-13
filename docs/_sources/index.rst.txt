@@ -6,6 +6,8 @@
 Welcome to the Stock Prediction API documentation
 =================================================
 
+Github: https://github.com/duncanmazza/ml_stock_prediction_api/tree/master
+
 Introduction
 ============
 
