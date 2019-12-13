@@ -107,11 +107,20 @@ class CashMoneySwag():
 
     def _get_plot_vals(self):
         fit = self.fit
-        upper = fit.mu_total + 2*fit.sd_total
-        lower = fit.mu_total - 2*fit.sd_total
+        k=0
+        l=[]
+        for i in fit.index.values:
+            ts = (i - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+            j=datetime.utcfromtimestamp(ts)
+            if (j.weekday() == 5 or j.weekday() == 6):
+                l.append(k)
+            k = k + 1
+        fit.drop(fit.index[l])
+        upper = fit.mu_total.values + 2*fit.sd_total.values
+        lower = fit.mu_total.values - 2*fit.sd_total.values
         band_x = np.append(fit.index.values, fit.index.values[::-1])
         band_y = np.append(lower, upper[::-1])
-        xy_pred = [fit.index, fit.mu_total, fit.sd_total]
+        xy_pred = [fit.index.values, fit.mu_total.values, fit.sd_total.values]
         std_bounds = [band_x, band_y]
         train_data = [self.data_early.index, self.data_early['raw_y']]
         test_data = [self.data_later.index, self.data_later['raw_y']]
