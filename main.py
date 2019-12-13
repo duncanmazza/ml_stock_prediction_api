@@ -12,7 +12,7 @@ from src.BayesReg import CashMoneySwag
 
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
-from bokeh.models import ColumnDataSource, Slider, TextInput, Select
+from bokeh.models import ColumnDataSource, Slider, TextInput, Select, BoxAnnotation
 from bokeh.plotting import figure
 
 
@@ -26,7 +26,7 @@ xy_pred, std_bounds, train_data, test_data = cms.go(start_date=rg[0],split_date=
 
 # Set up plot
 p = figure(plot_height=572, plot_width=900,
-              title="my sine wave",x_axis_type='datetime',
+              title="Stock Price Prediction for AAPL",x_axis_type='datetime',
               tools="crosshair,pan,reset,save,wheel_zoom")
 p.yaxis.axis_label = 'money'
 p.xaxis.axis_label = 'time'
@@ -48,16 +48,18 @@ p.circle('x','y',source=defit,
          color="black", legend="Training data")
 p.circle('x','y',source=dlfit,
          color="yellow", legend="Test data")
+# predict_region = BoxAnnotation(left=rg[1],
+#                                fill_alpha=0.1, fill_color="yellow")
+# p.add_layout(predict_region)
 p.legend.location = "top_left"
 
 
 # Set up widgets
-text = TextInput(title="title", value='my time stretcher')
+text = TextInput(title="title", value='Stock Price Prediction for AAPL')
 start_date = TextInput(title="Start Date", value='2019-07-31')
 num_month_train = TextInput(title="Number of months to train on", value="2")
 num_month_pred = TextInput(title="Number of months to predict", value="1")
 model_type = Select(title="Model Type", options=["Combined","GPM","LSTM"], value="GPM")
-
 
 # Set up callbacks
 def update_title(attrname, old, new):
@@ -69,8 +71,8 @@ def update_data(attrname, old, new):
 
     # Get the current slider values
     t_start = pd.to_datetime(start_date.value)
-    t_train = t_start + int(num_month_train.value)*pd.Timedelta(15,"D")
-    t_pred = t_train + int(num_month_pred.value)*pd.Timedelta(15,"D")
+    t_train = t_start + float(num_month_train.value)*pd.Timedelta(30,"D")
+    t_pred = t_train + float(num_month_pred.value)*pd.Timedelta(30,"D")
 
     m_type = model_type.value
 
@@ -79,6 +81,7 @@ def update_data(attrname, old, new):
     bfit.data=dict(x=std_bounds[0], y=std_bounds[1])
     defit.data=dict(x=train_data[0], y=train_data[1])
     dlfit.data=dict(x=test_data[0], y=test_data[1])
+    BoxAnnotation.left = t_train
 
 for w in [text, start_date, num_month_train, num_month_pred, model_type]:
     w.on_change('value', update_data)

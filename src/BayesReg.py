@@ -24,9 +24,12 @@ class CashMoneySwag():
         return pd.DataFrame(data={'t':t, 'norm_y':norm_y, 'raw_y': raw_y},index=self.comp.data_frame.index)
 
     def go(self, start_date=None,split_date=pd.to_datetime("2019-09-30"),end_date=None):
+        print("Generating data...")
         self._gen_test_train_data(start_date, split_date, end_date)
+        print("Training GPM...")
         self._train_gp()
         self._predict_gp()
+        print("Generating plot...")
         return self._get_plot_vals()
 
     def _gen_test_train_data(self, start_date, split_date, end_date):
@@ -91,7 +94,7 @@ class CashMoneySwag():
         std_y=np.std(self.data['raw_y'].values)
         first_y=self.data['raw_y'][0]
 
-        print("Predicting with gp ...")
+        print("Predicting with GPM ...")
         mu, var = self.gp.predict(tnew, point=self.mp, diag=True)
         mean_pred = mu*std_y + first_y
         var_pred  = var*std_y**2
