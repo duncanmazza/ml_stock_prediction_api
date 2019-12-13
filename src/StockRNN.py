@@ -25,27 +25,9 @@ TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Coll
                   "that you have enabled the GPU your settings".format(DEVICE)
 
 
-# class Rescaler:
-#     def __init__(self, min_val, max_val):
-#         self.min_val = min_val
-#         self.max_val = max_val
-#         self.train_max = 0
-#         self.train_min = 0
-#
-#     def rescale_train(self, train_data):
-#         self.train_max = np.max(train_data)
-#         self.train_min = np.min(train_data)
-#         return (self.max_val - self.min_val) * (train_data - self.train_min) / (self.train_max - self.train_min) + \
-#                self.min_val
-#
-#     def rescale_test(self, test_data):
-#         return (self.max_val - self.min_val) * (test_data - self.train_min) / (self.train_max - self.train_min) + \
-#                self.min_val
-
-
 class StockRNN(nn.Module):
     r"""
-    Class for handling all RNN operations.
+    Class for training on and predicting stocks using a LSTM network
     """
     train_set: TensorDataset
     test_set: TensorDataset
@@ -57,26 +39,26 @@ class StockRNN(nn.Module):
                  sequence_segment_length: int = 50, drop_prob: float = 0.3, device: str = DEVICE,
                  auto_populate: bool = True, train_data_prop: float = 0.8, lr: float = 1e-4,
                  train_batch_size: int = 10, test_batch_size: int = 4, num_workers: int = 2, label_length: int = 30,
-                 try_load_weights: bool = False, save_state_dict: bool = True, rolling_avg_length: int = 10):
+                 try_load_weights: bool = False, save_state_dict: bool = True):
         r"""
-        TODO: documentation here
-
-        :param lstm_hidden_size:
-        :param lstm_num_layers:
-        :param ticker:
-        :param to_compare:
-        :param train_start_date:
-        :param train_end_date:
-        :param sequence_segment_length:
-        :param drop_prob:
-        :param device:
-        :param auto_populate:
-        :param train_data_prop:
-        :param lr:
-        :param train_batch_size:
-        :param test_batch_size:
-        :param num_workers:
-        :param label_length:
+        :param lstm_hidden_size: size of the lstm hidden layer
+        :param lstm_num_layers: number of layers for the lstm
+        :param ticker: ticker of company whose stock you want to predict
+        :param to_compare: ticker of companies whose stock will be part of the features of the dataset
+        :param train_start_date: date to request data from
+        :param train_end_date: date to request data to
+        :param sequence_segment_length: length of sequences to train the model on
+        :param drop_prob: probability for dropout layers
+        :param device: string for device to try sending the tensors to (i.e. "cuda")
+        :param auto_populate: automatically calls all 'populate' functions in the constructor
+        :param train_data_prop: proportion of data set to allocate to training data
+        :param lr: learning rate for the optimizer
+        :param train_batch_size: batch size for the training data
+        :param test_batch_size:batch size for the testing data
+        :param num_workers: parameter for Pytorch DataLoaders
+        :param label_length: length of data (starting at the end of each sequence segment) to consider for the loss
+        :param try_load_weights: boolean for whether the model should search for a cached model state dictionary
+        :param save_state_dict: boolean for whether the model should cache its weights as a state dictionary
         """
         super(StockRNN, self).__init__()
 
@@ -100,7 +82,6 @@ class StockRNN(nn.Module):
         self.test_batch_size = test_batch_size
         self.num_workers = num_workers
         self.save_state_dict = save_state_dict
-        self.rolling_avg_length = rolling_avg_length
 
         if label_length >= self.sequence_segment_length:
             print("Label length was specified to be {}, but cannot be >= self.sequence_segment_length; setting "
@@ -164,12 +145,11 @@ class StockRNN(nn.Module):
         else:
             considering_string = ""
         self.identifier = "MODEL_FOR_" + self.companies[0].ticker + considering_string + \
-                          "_WITH_lstm_hidden_size_{}_lstm_num_layers_{}_input_size_{}_rolling_avg_length_{}_sequence_" \
+                          "_WITH_lstm_hidden_size_{}_lstm_num_layers_{}_input_size_{}_sequence_" \
                           "segment_length_{}".format(
                               self.lstm_hidden_size,
                               self.lstm_num_layers,
                               self.num_companies,
-                              self.rolling_avg_length,
                               self.sequence_segment_length)
 
         self.model_weights_path = os.path.join(os.getcwd(), ".cache", self.identifier + ".bin")
@@ -225,7 +205,7 @@ class StockRNN(nn.Module):
 
     def peek_dataset(self, figsize: (int, int) = (10, 5)):
         r"""
-        Creates a simple line plot of the stock data
+        Creates a simple line plot of the entire dataset
 
         :param figsize: tuple of integers for :class:`plt.subplots` ``figsize`` argument
         """
@@ -267,8 +247,7 @@ class StockRNN(nn.Module):
         daily_stock_data_lens = []
         data_is_of_same_len = True
         for company in self.companies:
-            daily_stock_data.append(company.return_numpy_array_of_company_daily_stock_percent_change(
-                rolling_avg_length=self.rolling_avg_length))
+            daily_stock_data.append(company.return_numpy_array_of_company_daily_stock_percent_change())
             daily_stock_data_lens.append(len(daily_stock_data[-1]))
             if daily_stock_data_lens[0] != daily_stock_data_lens[-1]:
                 data_is_of_same_len = False
@@ -384,10 +363,11 @@ class StockRNN(nn.Module):
         Completes a forward pass of data through the network. The tensor passed in is of shape (batch size, features,
         sequence length), and the output is of shape (batch size, 1, sequence length). The data is passed through a LSTM
         layer with an arbitrary number of layers and an arbitrary hidden size (as defined by :attr:`lstm_hidden_size`
-        and :attr:`lstm_num_layers`
+        and :attr:`lstm_num_layers`; the output is then passed through 2 fully connected layers such that the final
+        number of features is the same as the input number of features (:attr:`num_companies`)
 
         :param X: input matrix of data of shape: (batch size, features (number of companies), sequence length)
-        :param predict_beyond: TODO
+        :param predict_beyond: number of days to recursively predict beyond the given input sequence
         :return: output of the forward pass of the data through the network (same shape as input)
         """
         X = X.permute(0, 2, 1)  # input x needs to be converted from (batch_size, features, sequence_length) to
@@ -422,7 +402,7 @@ class StockRNN(nn.Module):
                     plot_loss_figsize: (int, int) = (7, 5)):
         """
         This method trains the network using data in :attr:`train_loader` and checks against the data in
-        :attr:`test_loader` at the end of each epoch.. The forward pass through the network produces sequences of the
+        :attr:`test_loader` at the end of each epoch. The forward pass through the network produces sequences of the
         same length as the input sequences. The sequences in the label data are of length :attr:`label_length`, so the
         output sequences are  cropped to length :attr:`label_length` before being passed through the MSE loss function.
         Because each element of the output sequence at position ``n`` is a prediction of the input element ``n+1``, the
@@ -437,7 +417,6 @@ class StockRNN(nn.Module):
         :param plot_loss: if true, plot the training and test loss
         :param plot_loss_figsize: ``figsize`` argument for the loss plot
         """
-        # self.train(True)
         epoch_num = 0
         pass_num = 0
         training_start_time = time.time()
@@ -550,12 +529,22 @@ class StockRNN(nn.Module):
     def make_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 2,
                                         data_start_indices: np.ndarray = None):
         r"""
-        Randomly selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values
-         of the stock are shown alongside.
+        Selects data from the dataset and makes a prediction ``predict_beyond`` days out, and the actual values
+        of the stock are shown alongside.
 
         :param predict_beyond: days to predict ahead in the future
-        :param num_plots:
-        :return:
+        :param data_start_indices: indices corresponding to locations in the total dataset sequence for the training
+        data to be gathered from (with the training data being of length :attr:`sequence_segment_length`)
+        :return: length of the data being returned (training + prediction sequences)
+        :return: datetime objects corresponding to data_start_indices
+        :return: datetime objects corresponding to the end of the returned sequences
+        :return: indices corresponding to the days where the predicted sequence starts
+        :return: input and label sequence data associated with each pass of the model
+        :return: numpy array of the model output
+        :return: training data (in absolute stock value form instead of the % change that the model sees)
+        :return: output prediction of the model converted from % change to actual stock values
+        :return: label data (in absolute stock value form instead of % change) to compare to the output prediction
+        :return: disparity between predicted stock values and actual stock values
         """
         input_and_pred_len = self.sequence_segment_length + predict_beyond
         if data_start_indices is None:
@@ -597,7 +586,13 @@ class StockRNN(nn.Module):
 
     def check_sliding_window_valid_at_index(self, end_pred_index, pred_beyond_range):
         r"""
-        TODO: documentation
+        Checks that the index parameter for creating a distribution of predictions is valid for the dataset, and
+        modifies it if it isn't (as well as prints a warning describing the condition)
+
+        :param end_pred_index: index of the date that is desired to be predicted
+        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to
+        arrive at a prediction at ``end_pred_index``
+        :return: end_pred_index (modified if necessary)
         """
         if end_pred_index is None:
             print("latest_data_index is None, so will set to minimum possible value")
@@ -613,7 +608,13 @@ class StockRNN(nn.Module):
 
     def generate_predicted_distribution(self, end_pred_index: int = None, pred_beyond_range: (int, int) = (1, 10)):
         r"""
-        TODO: documentation
+        Returns a list of predicted stock values at a given date using a range of forecast lengths
+
+        :param end_pred_index: index of the date that is desired to be predicted
+        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to
+        arrive at a prediction at ``end_pred_index``
+        :return: list of predicted values (of length given by ``pred_beyond_range``)
+        :return: actual stock value corresponding to the predictions
         """
         end_pred_index = self.check_sliding_window_valid_at_index(end_pred_index, pred_beyond_range)
         pred_beyond_range_delta = pred_beyond_range[1] - pred_beyond_range[0]
@@ -632,7 +633,15 @@ class StockRNN(nn.Module):
 
     def pred_in_conj(self, start_of_pred_idx: int, n_days: int, pred_beyond_range: (int, int) = (1, 10)):
         r"""
-        TODO: documentation
+        Calls :method:`generate_predicted_distribution` to create a list of predictions for each day given in a given
+        range, and returns the mean and standard deviation associated with each day.
+
+        :param start_of_pred_index: integer corresponding to the first date whose distribution will be predicted
+        :param n_days: number of days from ``start_of_pred_index`` to predict out
+        :param pred_beyond_range: tuple containing the range of the number of forecasted days the model will use to
+        arrive at a prediction at ``end_pred_index``
+        :return: list of length ``n_days`` of the mean values associated with each day's predicted stock
+        :return: list of length ``n_days`` of the standard deviation associated with each day's predicted stock
         """
         mean_list = []
         std_list = []
@@ -659,7 +668,13 @@ class StockRNN(nn.Module):
 
     def plot_prediction_with_validation(self, predict_beyond: int = 30, num_plots: int = 5, plt_scl=20):
         r"""
-        TODO: documentation
+        A method for debugging/validating :attr:`make_prediction_with_validation` - makes predictions and shows the
+        raw output of the model, reconstructed stock prices, and disparity between predicted stock prices and actual
+        stock prices.
+
+        :param predict_beyond: days to predict ahead in the future
+        :param num_plots: number of times to call :attr:`make_prediction_with_validation` and plot the results
+        :plt_scl: integer for width and heigh parameters of matplotlib plot
         """
         forward_seq_len, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
         output_numpy, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
@@ -724,7 +739,7 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    # model.do_training(num_epochs=100)
+    model.do_training(num_epochs=100)
 
     # model.eval()
     model.plot_prediction_with_validation()

@@ -21,7 +21,7 @@ napoleon_google_docstring = True
 
 # -- Project information -----------------------------------------------------
 
-project = 'Moneymaker'
+project = 'Stock Prediction API'
 copyright = '2019, Duncan Mazza and Shashank Swaminathan'
 author = 'Duncan Mazza and Shashank Swaminathan'
 
@@ -131,7 +131,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Moneymakerdoc'
+htmlhelp_basename = 'stock_pred_api_doc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -158,7 +158,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Moneymaker.tex', 'Moneymaker Documentation',
+    (master_doc, 'stock_pred_api.tex', 'Stock Prediction API Documentation',
      'Duncan and Shashank', 'manual'),
 ]
 
@@ -168,7 +168,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'moneymaker', 'Moneymaker Documentation',
+    (master_doc, 'stock_pred_api', 'Stock Prediction API Documentation',
      [author], 1)
 ]
 
@@ -179,8 +179,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Moneymaker', 'Moneymaker Documentation',
-     author, 'Moneymaker', 'One line description of project.',
+    (master_doc, 'Stock Prediction API', 'Stock Prediction API Documentation',
+     author, 'Stock Prediction API', 'One line description of project.',
      'Miscellaneous'),
 ]
 
