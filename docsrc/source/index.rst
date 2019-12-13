@@ -20,6 +20,7 @@ Information on each part of the machine learning model as well as examples of th
 
    notes/LSTM.rst
    notes/GPM.rst
+   notes/combined.rst
    notes/usage.rst
    notes/examples.rst
 
@@ -27,7 +28,7 @@ All of our module's code is documented and can be found here:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Code Documentation:
 
    _build/modules/
 
