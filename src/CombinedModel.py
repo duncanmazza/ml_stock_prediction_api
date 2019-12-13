@@ -1,3 +1,9 @@
+"""
+Code for the combined model approach.
+
+@author: Shashank Swaminathan
+"""
+
 from src.BayesReg import CashMoneySwag
 from src.StockRNN import StockRNN
 import pandas as pd
@@ -12,14 +18,34 @@ TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Coll
                   "that you have enabled the GPU your settings".format(DEVICE)
 
 class WomboCombo:
+    r"""
+    Class for handling combined model operations.
+    """
     def __init__(self, ticker, comp_tickers):
+        r"""
+        init function. It will set up the StockRNN and CashMoneySwag classes.
+
+        :param ticker: Ticker of stocks to predict
+        :param comp_tickers: List of tickers to compare desired ticker against. Used for StockRNN only.
+        """
         self.srnn = StockRNN(ticker, to_compare=comp_tickers,
                              train_start_date=datetime(2012, 1, 1),
                              train_end_date=datetime.today(),
-                             try_load_weights=True)
+                             try_load_weights=False)
         self.cms = CashMoneySwag(ticker)
 
-    def train(self, start_date, pred_start, pred_end, model_name="Combined", mw=0.5, n_epochs=10):
+    def train(self, start_date, pred_start, pred_end, mw=0.5, n_epochs=10):
+        r"""
+        Main training function. It runs both the LSTM and GP models and stores results in attributes.
+
+        :param start_date: Training start date (for GP model only). Provide as datetime object.
+        :param pred_start: Date to start predictions from. Provide as datetime object.
+        :param pred_end: Date to end predictions. Provide as datetime object.
+        :param mw: Model weight. Used to do weighted average between GP and LSTM. 0 is for only the LSTM, and 1 is for only the GP. Defaults to 0.5 (equal split).
+        :param n_epochs: Number of epochs to train the LSTM. Defaults to 10.
+
+        :returns: (Mean predictions [t, y], Upper/lower bounds of 2 std [t, y])
+        """
         dt_ps = date(pred_start.year, pred_start.month, pred_start.day)
         dt_pe = date(pred_end.year, pred_end.month, pred_end.day)
         self.n_days_pred = np.busday_count(dt_ps, dt_pe) + 1
@@ -29,6 +55,15 @@ class WomboCombo:
                                 mw = mw, n_epochs = n_epochs)
 
     def _combo_shot(self, start_date, pred_start, pred_end, mw=0.5, n_epochs=10):
+        r"""
+        Helper function to actually do the combo model training. Runs the two models individually, aligns the two results in time, then adds the two generated distributions as a weighted sum. Sets attribute combo_vals equal to the result.
+
+        :param start_date: Training start date (for GP model only). Provide as datetime object.
+        :param pred_start: Date to start predictions from. Provide as datetime object.
+        :param pred_end: Date to end predictions. Provide as datetime object.
+        :param mw: Model weight. Used to do weighted average between GP and LSTM. 0 is for only the LSTM, and 1 is for only the GP. Defaults to 0.5 (equal split).
+        :param n_epochs: Number of epochs to train the LSTM. Defaults to 10.
+        """
         self._srnn_train(pred_start, self.n_days_pred, n_epochs = n_epochs)
         self._cms_train(start_date, self.train_end, pred_end)
         m_combo = self.m_cms[-self.n_days_pred:]*(mw)+self.m_srnn*(1-mw)
@@ -43,6 +78,13 @@ class WomboCombo:
         self.combo_vals = (xy_pred, std_bounds)
 
     def _srnn_train(self, pred_start, n_days_pred, n_epochs=10):
+        r"""
+        Helper function to train the LSTM using the StockRNN class. Generates upper and lower bounds of prediction based on mean and std. deviation. Sets attribute srnn_vals equal to result. Result is of form: ([time, mean prediction], [time, upper/lower bounds], [time, actual data prior to prediction], [time, actual data during prediction]).
+
+        :param pred_start: Date to start predictions from. Provide as datetime object.
+        :param n_days_pred: Number of days to predict ahead. Will only predict on business days.
+        :param n_epochs: Number of epochs to train the LSTM. Defaults to 10.
+        """
         srdf = self.srnn.companies[0].data_frame
         srdfdt = pd.to_datetime(srdf.Date)
         raw_p_st_idx = srdfdt.searchsorted(pred_start)
@@ -78,6 +120,13 @@ class WomboCombo:
         self.srnn_vals = (xy_pred, std_bounds, train_data, test_data)
 
     def _cms_train(self, start_date, train_end, pred_end):
+        r"""
+        Helper function to train the GP model using the CashMoneySwag class. Sets attribute cms_vals equal to result. Result is of form: ([time, mean prediction], [time, upper/lower bounds], [time, actual data prior to prediction], [time, actual data during prediction]).
+
+        :param start_date: Training start date (for GP model only). Provide as datetime object.
+        :param train_end: Date to end training. Provide as datetime object.
+        :param pred_end: Date to end predictions. Provide as datetime object. Assumes predictions begin right after training.
+        """
         xy_pred, std_bounds, train_data, test_data = self.cms.go(start_date=start_date,
                                                                  split_date=train_end,
                                                                  end_date=pred_end)
