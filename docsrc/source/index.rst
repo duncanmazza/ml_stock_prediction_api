@@ -9,7 +9,9 @@ Welcome to the Stock Prediction API documentation
 Introduction
 ============
 
-notes/about.rst
+The goal of our project is to create a stock market modeling API that would utilize multiple different types of machine learning models to learn patterns in stock prices and make predictions about future stock prices. With the goal of an API in mind, we have integrated automatic documentation building and our code base consists primarily of object-oriented code. To that end, we integrated Yahoo's API a class that serves as a common ground for the disparate models to acquire data.
+
+Information on each part of the machine learning model as well as examples of the results are found in the notes below.
 
 .. toctree::
    :glob:
@@ -21,11 +23,11 @@ notes/about.rst
    notes/usage.rst
    notes/examples.rst
 
+All of our module's code is documented and can be found here:
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
-   All of our module's code is documented and can be found here
 
    _build/modules/
 
