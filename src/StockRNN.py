@@ -463,7 +463,7 @@ class StockRNN(nn.Module):
 
                 self.optimizer.zero_grad()
                 output = self.forward(train_inputs)
-                train_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], train_labels)
+                train_loss_size = self.loss(output[:, 0, output.shape[2] - self.label_length - 1:-1], train_labels[:, 0, :])
 
                 train_loss_size.backward()
                 train_loss_list.append(train_loss_size.data.item())
@@ -493,7 +493,7 @@ class StockRNN(nn.Module):
                     test_inputs.to(DEVICE)
                     test_labels.to(DEVICE)
                 output = self.forward(test_inputs)
-                test_loss_size = self.loss(output[:, :, output.shape[2] - self.label_length - 1:-1], test_labels)
+                test_loss_size = self.loss(output[:, 0, output.shape[2] - self.label_length - 1:-1], test_labels[:, 0, :])
                 test_loss_this_epoch += test_loss_size.data.item()
 
                 if epoch_num == num_epochs and plot_output and i < subplot_val:
@@ -615,7 +615,7 @@ class StockRNN(nn.Module):
 
         return end_pred_index
 
-    def generate_predicted_distribution(self, end_pred_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+    def generate_predicted_distribution(self, end_pred_index: int = None, pred_beyond_range: (int, int) = (1, 10)):
         r"""
         TODO: documentation
         """
@@ -630,7 +630,7 @@ class StockRNN(nn.Module):
             debug.append(actual_stock_list[0][-1])
         return predicted_value_list, actual_stock_list[0][-1]
 
-    def pred_in_conj(self, start_of_pred_idx, n_days, pred_beyond_range: (int, int) = (5, 10)):
+    def pred_in_conj(self, start_of_pred_idx, n_days, pred_beyond_range: (int, int) = (1, 10)):
         r"""
         TODO: documentation
         """
@@ -645,7 +645,7 @@ class StockRNN(nn.Module):
             std_list.append(np.std(predicted_value_list))
         return mean_list, std_list
 
-    def plot_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (5, 10)):
+    def plot_predicted_distribution(self, latest_data_index: int = None, pred_beyond_range: (int, int) = (1, 10)):
         r"""
         TODO: documentation
         """
@@ -694,7 +694,7 @@ class StockRNN(nn.Module):
             axes[ax][1].set_title("{} stock from\n{} to {}".format(self.companies[0].ticker, start_dates[ax],
                                                                    end_dates[ax]))
             axes[ax][1].set_xlabel("Business days since {}".format(start_dates[ax]))
-            axes[ax][1].set_ylabel("$")
+            axes[ax][1].set_ylabel("Stock Price")
             axes[ax][1].legend()
             axes[ax][2].plot(disparity_plot_indices, disparity_list[ax], label="disparity",
                              linestyle="", marker="o")
@@ -710,7 +710,7 @@ if __name__ == "__main__":
     # set to switch between loading saved weights if available
     try_load_weights = True
 
-    model = StockRNN("IBM", to_compare=["HPE", "XRX", "ACN", "ORCL"], train_start_date=datetime(2012, 1, 1),
+    model = StockRNN("AAPL", to_compare=["GOOGL", "MSFT", "MSI"], train_start_date=datetime(2012, 1, 1),
                      train_end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
     # model = StockRNN("dummy")
     # model.peek_dataset()
@@ -727,5 +727,5 @@ if __name__ == "__main__":
     # model.do_training(num_epochs=100)
 
     # model.eval()
-    # model.plot_prediction_with_validation()
-    model.plot_predicted_distribution(12)
+    model.plot_prediction_with_validation()
+    # model.plot_predicted_distribution(12)
