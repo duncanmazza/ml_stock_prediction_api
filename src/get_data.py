@@ -16,7 +16,7 @@ ZERO_TIME = " 00:00:00"
 
 class Company:
     def __init__(self, ticker: str, start_date: datetime, end_date: datetime, call_populate_dataframe: bool = True,
-                 cache_bool: bool = True):
+                 cache_bool: bool = True,):
         """
         TODO: documentation here
 
@@ -36,6 +36,29 @@ class Company:
 
         if call_populate_dataframe:
             self.populate_dataframe()
+
+    def populate_dataframe(self):
+        r"""
+        Populates :attr:`data_frame` with stock data acquired using pandas_datareader.data. View more information
+        `here <https://pandas-datareader.readthedocs.io/en/latest/remote_data.html>`__. Modifies :attr:`start_date`,
+        :attr:`start_date_changed`, :attr:`end_date`, and :attr:`end_date_changed` if :attr:`start_date` and/or
+        :attr:`end_date` are different than the actual start and end dates in :attr:`data_frame` such that
+        :attr:`start_date` and :attr:`end_date` equal the actual start and end dates in :attr:`data_frame` (and
+        :attr:`start_date_changed` and :attr:`end_date_changed` reflect whether :attr:`start_date` and :attr:`end_date`
+        were changed respectively).
+        """
+        if self.ticker == "dummy":
+            self.data_frame = self.return_dummy_data()
+        else:
+            self.data_frame = self.return_data()
+        data_frame_start_date = self.data_frame["Date"][0]
+        data_frame_end_date = self.data_frame["Date"][self.data_frame.last_valid_index()]
+        if data_frame_start_date != self.start_date:
+            self.start_date = data_frame_start_date
+            self.start_date_changed = True
+        if data_frame_end_date != self.end_date:
+            self.end_date = data_frame_end_date
+            self.end_date_changed = True
 
     def return_data(self, ticker: str = None, start_date: datetime = None, end_date: datetime = None) -> DataFrame:
         """
@@ -66,7 +89,8 @@ class Company:
             try:
                 data_frame = read_csv(os.path.join(os.getcwd(), rel_file_path))
                 print(
-                    "Loaded data for {} from {} to {} from .cache/ folder".format(ticker, start_date_str, end_date_str))
+                    " > Loaded data requested for {} from {} to {} from '.cache/' folder".format(ticker, start_date_str,
+                                                                                         end_date_str))
                 return data_frame
             except errors.ParserError:
                 print("Could not load data for {} from {} to {} from .cache/ folder (although the path exists"
@@ -75,14 +99,15 @@ class Company:
 
         try:
             data_frame = web.get_data_yahoo(ticker, start_date, end_date)
-            print("Loaded data for {} from {} to {} from internet".format(ticker, start_date, end_date))
+            print(" > Loaded data requested for {} from {} to {} from internet".format(ticker, start_date_str,
+                                                                                       end_date_str))
         except requests.exceptions.SSLError:
-            print("A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
+            print("ERROR: A 'requests.exceptions.SSLError' was raised, which may be indicative of a lack of "
                   "internet connection; try again after verifying that you have a successful internet "
                   "connection.")
             raise requests.exceptions.SSLError
         except requests.exceptions.ConnectionError:
-            print("A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a "
+            print("ERROR: A 'requests.exceptions.ConnectionError' was raised, which may be indicative of a "
                   "lack of internet connection; try again after verifying that you have a successful "
                   "internet connection.")
             raise requests.exceptions.ConnectionError
@@ -98,25 +123,8 @@ class Company:
 
         return data_frame
 
-    def populate_dataframe(self):
-        r"""
-        Populates :attr:`data_frame` with stock data acquired using pandas_datareader.data. View more information
-        `here <https://pandas-datareader.readthedocs.io/en/latest/remote_data.html>`__. Modifies :attr:`start_date`,
-        :attr:`start_date_changed`, :attr:`end_date`, and :attr:`end_date_changed` if :attr:`start_date` and/or
-        :attr:`end_date` are different than the actual start and end dates in :attr:`data_frame` such that
-        :attr:`start_date` and :attr:`end_date` equal the actual start and end dates in :attr:`data_frame` (and
-        :attr:`start_date_changed` and :attr:`end_date_changed` reflect whether :attr:`start_date` and :attr:`end_date`
-        were changed respectively).
-        """
-        self.data_frame = self.return_data()
-        data_frame_start_date = self.data_frame["Date"][0]
-        data_frame_end_date = self.data_frame["Date"][self.data_frame.last_valid_index()]
-        if data_frame_start_date != self.start_date:
-            self.start_date = data_frame_start_date
-            self.start_date_changed = True
-        if data_frame_end_date != self.end_date:
-            self.end_date = data_frame_end_date
-            self.end_date_changed = True
+    def return_dummy_data(self):
+        return DataFrame({"Date" : [i for i in range(200)], "Close" : [i for i in range(200)]})
 
     def revise_start_date(self, new_start_date: datetime):
         """
@@ -140,6 +148,7 @@ class Company:
         """
         loc = self.data_frame["Date"][self.data_frame["Date"] == new_end_date].index[0]
         self.data_frame = self.data_frame[:loc + 1]  # add 1 so that the last date is included
+        self.data_frame: DataFrame
         self.end_date = new_end_date
 
     def cache(self, file_path: str, data_frame: DataFrame = None):
@@ -170,15 +179,50 @@ class Company:
             self.populate_dataframe()
         return np.array(self.data_frame["Close"])
 
-    def return_numpy_array_of_company_daily_stock_percent_change(self) -> np.ndarray:
+    def return_numpy_array_of_company_daily_stock_percent_change(self, rolling_avg_length: int = 4) -> np.ndarray:
         """
         Converts the numpy array of the closing stock data (acquired by calling
         :method:`return_numpy_array_of_company_daily_stock_close`) into an array of day-over-day percent change.
+        Adds a value of 0 at the beginning of the array to maintain sequence length.
 
+        :param apply_rolling_avg: if nonzero, applies a rolling average filter to the percent change data (see
+        :method:`moving_average` for details on how the rolling average is calculated with padding)
         :return: numpy array of length 1 less than the array generated by
         :method:`return_numpy_array_of_company_daily_stock_close`
         """
         daily_stock_data = self.return_numpy_array_of_company_daily_stock_close()
         start_array: np.ndarray = daily_stock_data[:-1]
         end_array: np.ndarray = daily_stock_data[1:]
-        return (end_array - start_array) / start_array
+        percent_change = (end_array - start_array) / start_array
+        # if rolling_avg_length == 0:
+        return np.concatenate((np.array([0]), percent_change), axis=0)
+        # else:
+        #     return self.moving_average(percent_change, n=rolling_avg_length)
+
+    def get_date_at_index(self, i):
+        return self.data_frame["Date"].iloc[[i]].values[0]
+
+    @staticmethod
+    def moving_average(a, n, padding : bool =True):
+        r"""
+        Calculates the moving average of a one-dimensional numpy array ``a``, capable of utilizing a padding of
+        length ``n - 1`` at the beginning of the pre-filtered data so that the length is not truncated; the padding is
+        populated with the same value as the first value of the % change sequence.
+        :param a: one-dimensional numpy array
+        :param n: length of rolling average filter
+        :param padding: boolean for whether to utilize padding
+        :return: filtered array
+        """
+        if padding:
+            a = np.concatenate((np.ones((n - 1,)) * a[0], a), axis=0)
+        ret = np.cumsum(a, dtype=float)
+        ret[n:] = ret[n:] - ret[:-n]
+        return ret[n - 1:] / n
+
+    def reconstruct_stock_from_percent_change(self, percent_change_vec: np.ndarray, initial_condition_index: int):
+        len_percent_change_vec = len(percent_change_vec)
+        stock_price = np.zeros((len_percent_change_vec + 1))
+        stock_price[0] = self.data_frame["Close"].iloc[[initial_condition_index]]
+        for i in range(1, len_percent_change_vec + 1):
+            stock_price[i] = stock_price[i-1] * (1 + percent_change_vec[i-1])
+        return stock_price

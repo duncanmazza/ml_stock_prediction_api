@@ -9,7 +9,7 @@ def _stock_rnn():
     r"""
     TODO: documentation
     """
-    return StockRNN("IBM", 1, 1, start_date=datetime(2017, 1, 1), end_date=datetime(2018, 1, 1))
+    return StockRNN("IBM", 1, 1, train_start_date=datetime(2017, 1, 1), train_end_date=datetime(2018, 1, 1))
 
 
 def test_populate_daily_stock_data(_stock_rnn: StockRNN):
