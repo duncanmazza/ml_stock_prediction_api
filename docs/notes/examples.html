@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="ml_stock_prediction_api" href="../_build/modules.html" />
+    <link rel="next" title="moneymaker" href="../_build/modules.html" />
     <link rel="prev" title="Usage" href="usage.html" /> 
 </head>
 
@@ -84,12 +84,13 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="LSTM.html">Understanding the LSTM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../_build/modules.html">ml_stock_prediction_api</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -163,6 +164,8 @@ A model trained for 100 epochs to predict Apple stock with the added features of
 Below is a plot of the GP being trained on three months of Apple stock data, and then being used to predict for an additional month. The shaded red region is a 95% confidence interval, and the dark red line in the center is the MAP - the <em>maximum a posteriori</em>, or the mean most likely prediction. As can be noticed, the predictions are only accurate for the first few days out.</p>
 <img alt="../_images/gpmex.png" src="../_images/gpmex.png" />
 <p>Combined Model Example:</p>
+<p>Below is a screenshot of the API in action. It is run off of a Bokeh server. Look at the usage section for more details.</p>
+<img alt="../_images/wcscreenshot.png" src="../_images/wcscreenshot.png" />
 </div>
 
 
@@ -173,7 +176,7 @@ Below is a plot of the GP being trained on three months of Apple stock data, and
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../_build/modules.html" class="btn btn-neutral float-right" title="ml_stock_prediction_api" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../_build/modules.html" class="btn btn-neutral float-right" title="moneymaker" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

@@ -82,12 +82,13 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/LSTM.html">Understanding the LSTM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Contents:</span></p>
+<p class="caption"><span class="caption-text">Code Documentation:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../_build/modules.html">ml_stock_prediction_api</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../_build/modules.html">moneymaker</a></li>
 </ul>
 
             
@@ -892,12 +893,11 @@
         <span class="nb">print</span><span class="p">(</span><span class="n">TO_GPU_FAIL_MSG</span><span class="p">)</span>
         <span class="n">model</span><span class="o">.</span><span class="n">__togpu__</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 
-    <span class="n">model</span><span class="o">.</span><span class="n">do_training</span><span class="p">(</span><span class="n">num_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+    <span class="c1"># model.do_training(num_epochs=100)</span>
 
     <span class="c1"># model.eval()</span>
     <span class="n">model</span><span class="o">.</span><span class="n">plot_prediction_with_validation</span><span class="p">()</span>
     <span class="c1"># model.plot_predicted_distribution(12)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">pred_in_conj</span><span class="p">(</span><span class="mi">123</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 </pre></div>
 
            </div>

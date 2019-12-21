@@ -14,3 +14,6 @@ Below is a plot of the GP being trained on three months of Apple stock data, and
 
 Combined Model Example:
 
+Below is a screenshot of the API in action. It is run off of a Bokeh server. Look at the usage section for more details.
+
+.. image:: ../../imgs/wcscreenshot.png

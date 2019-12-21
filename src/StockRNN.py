@@ -739,9 +739,8 @@ if __name__ == "__main__":
         print(TO_GPU_FAIL_MSG)
         model.__togpu__(False)
 
-    model.do_training(num_epochs=100)
+    # model.do_training(num_epochs=100)
 
     # model.eval()
     model.plot_prediction_with_validation()
     # model.plot_predicted_distribution(12)
-    model.pred_in_conj(123, 4)

@@ -84,12 +84,13 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../notes/LSTM.html">Understanding the LSTM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notes/GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notes/combined.html">The approach to combining models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notes/usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notes/examples.html">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">ml_stock_prediction_api</a><ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">moneymaker</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="main.html">main module</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">src package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
@@ -149,7 +150,7 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-          <li><a href="modules.html">ml_stock_prediction_api</a> &raquo;</li>
+          <li><a href="modules.html">moneymaker</a> &raquo;</li>
         
       <li>src package</li>
     
@@ -181,12 +182,12 @@
 <p>&#64;author: Shashank Swaminathan</p>
 <dl class="class">
 <dt id="src.BayesReg.GPM">
-<em class="property">class </em><code class="sig-prename descclassname">src.BayesReg.</code><code class="sig-name descname">GPM</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">21</em>, <em class="sig-param">16</em>, <em class="sig-param">27</em>, <em class="sig-param">13</em>, <em class="sig-param">74544)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">src.BayesReg.</code><code class="sig-name descname">GPM</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">12</em>, <em class="sig-param">36</em>, <em class="sig-param">5</em>, <em class="sig-param">34810)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Class encapsulating Gaussian Process model implementation. Depends on the PyMC3 library.</p>
 <dl class="method">
 <dt id="src.BayesReg.GPM.__init__">
-<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">21</em>, <em class="sig-param">16</em>, <em class="sig-param">27</em>, <em class="sig-param">13</em>, <em class="sig-param">74544)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">ticker</em>, <em class="sig-param">start_date=datetime.datetime(2000</em>, <em class="sig-param">1</em>, <em class="sig-param">1</em>, <em class="sig-param">0</em>, <em class="sig-param">0)</em>, <em class="sig-param">end_date=datetime.datetime(2019</em>, <em class="sig-param">12</em>, <em class="sig-param">13</em>, <em class="sig-param">12</em>, <em class="sig-param">36</em>, <em class="sig-param">5</em>, <em class="sig-param">34810)</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/BayesReg.html#GPM.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.BayesReg.GPM.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>init function. Fetches and prepares data from desired ticker using Company class from accompanying get_data API. Assumes start and end dates of January 1st, 2000 -&gt; today.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
