@@ -1,10 +1,10 @@
 ![](https://github.com/duncanmazza/moneymaker/workflows/Build%20Status/badge.svg)
 
+[Documentation and Project Description](https://duncanmazza.github.io/ml_stock_prediction_api/_build/src.html#module-src.StockRNN)
+
 Project for Machine Leraning: api for predicting stock prices
 
 ## Project Status: IN PROGRESS 
-
-TODO: finish README
 
 Install requirements:
 ```shell script
