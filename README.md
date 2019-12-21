@@ -1,4 +1,4 @@
-![](https://github.com/duncanmazza/moneymaker/workflows/Build%20Status/badge.svg)
+![](https://github.com/duncanmazza/ml_stock_prediction_api/workflows/Build%20Status/badge.svg)
 
 Project for Machine Leraning: api for predicting stock prices
 

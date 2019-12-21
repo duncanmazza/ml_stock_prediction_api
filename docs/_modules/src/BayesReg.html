@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>src.BayesReg &mdash; Moneymaker  documentation</title>
+  <title>src.BayesReg &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -48,7 +48,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> Moneymaker
+            <a href="../../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -80,9 +80,14 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/GPM.html">Understanding the GPM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../notes/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../_build/modules.html">ml_stock_prediction_api</a></li>
 </ul>
 
             
@@ -97,7 +102,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">Moneymaker</a>
+          <a href="../../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -146,7 +151,12 @@
            <div itemprop="articleBody">
             
   <h1>Source code for src.BayesReg</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Code for the Gaussian Process Model implementation.</span>
+
+<span class="sd">@author: Shashank Swaminathan</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
 <span class="kn">import</span> <span class="nn">pymc3</span> <span class="k">as</span> <span class="nn">pm</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -154,8 +164,18 @@
 <span class="kn">import</span> <span class="nn">theano.tensor</span> <span class="k">as</span> <span class="nn">tt</span>
 <span class="kn">from</span> <span class="nn">src.get_data</span> <span class="k">import</span> <span class="n">Company</span>
 
-<div class="viewcode-block" id="CashMoneySwag"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.CashMoneySwag">[docs]</a><span class="k">class</span> <span class="nc">CashMoneySwag</span><span class="p">():</span>
-<div class="viewcode-block" id="CashMoneySwag.__init__"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.CashMoneySwag.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">end_date</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()):</span>
+<div class="viewcode-block" id="GPM"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.GPM">[docs]</a><span class="k">class</span> <span class="nc">GPM</span><span class="p">():</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class encapsulating Gaussian Process model implementation. Depends on the PyMC3 library.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="GPM.__init__"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.GPM.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ticker</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">end_date</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        init function. Fetches and prepares data from desired ticker using Company class from accompanying get_data API. Assumes start and end dates of January 1st, 2000 -&gt; today.</span>
+
+<span class="sd">        :param ticker: Ticker of stock to predict.</span>
+<span class="sd">        :param start_date: Datetime object of when to start retrieving stock data. Defaults to 1/1/2000.</span>
+<span class="sd">        :param end_date: Datetime object of when to stop retrieving stock data. Defaults to today&#39;s date.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ticker</span> <span class="o">=</span> <span class="n">ticker</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_date</span> <span class="o">=</span> <span class="n">start_date</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end_date</span> <span class="o">=</span> <span class="n">end_date</span>
@@ -165,13 +185,27 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">split_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_early</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_later</span> <span class="o">=</span> <span class="kc">None</span></div>
 
     <span class="k">def</span> <span class="nf">_prep_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function to prepare the data. Assumes an attribute named comp exists, and is a Company class.</span>
+
+<span class="sd">        :returns: Dataframe of pruned data. Of form [times, normalized stock vals, raw stock vals]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">data_frame</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">data_frame</span><span class="o">.</span><span class="n">Date</span><span class="p">)</span>
         <span class="n">raw_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">return_numpy_array_of_company_daily_stock_close</span><span class="p">()</span>
         <span class="n">norm_y</span> <span class="o">=</span> <span class="p">(</span><span class="n">raw_y</span><span class="o">-</span><span class="n">raw_y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">raw_y</span><span class="p">)</span>
         <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dates_to_idx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">data_frame</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;t&#39;</span><span class="p">:</span><span class="n">t</span><span class="p">,</span> <span class="s1">&#39;norm_y&#39;</span><span class="p">:</span><span class="n">norm_y</span><span class="p">,</span> <span class="s1">&#39;raw_y&#39;</span><span class="p">:</span> <span class="n">raw_y</span><span class="p">},</span><span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">data_frame</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
-<div class="viewcode-block" id="CashMoneySwag.go"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.CashMoneySwag.go">[docs]</a>    <span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">split_date</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="s2">&quot;2019-09-30&quot;</span><span class="p">),</span><span class="n">end_date</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="GPM.go"><a class="viewcode-back" href="../../_build/src.html#src.BayesReg.GPM.go">[docs]</a>    <span class="k">def</span> <span class="nf">go</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">split_date</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="s2">&quot;2019-09-30&quot;</span><span class="p">),</span><span class="n">end_date</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Main function to train the model and predict future data. First generates training and testing data, then trains the GP on the training data. Finally, it predicts on the time range specified.</span>
+
+<span class="sd">        :param start_date: Date to start training GP. If left as None, defaults to starting date of training data set.</span>
+<span class="sd">        :param split_date: Date to end training.</span>
+<span class="sd">        :param start_date: Date to end predicting using GP. If left as None, defaults to ending date of training data set. Assumes prediction starts right after training.</span>
+
+<span class="sd">        :returns: A tuple of four arrays, containing the mean predictions, upper/lower bounds of predictions, training data, and test data for comparison. Predictions done on non business days are dropped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating data...&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_gen_test_train_data</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">split_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training GPM...&quot;</span><span class="p">)</span>
@@ -181,6 +215,13 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_plot_vals</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">_gen_test_train_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">split_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function to generate the training and testing data.</span>
+
+<span class="sd">        :param start_date: Date to start training GP. If left as None, defaults to starting date of training data set.</span>
+<span class="sd">        :param split_date: Date to end training.</span>
+<span class="sd">        :param start_date: Date to end predicting using GP. If left as None, defaults to ending date of training data set. Assumes prediction starts right after training.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">start_date</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
             <span class="n">start_date</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_date</span>
         <span class="k">if</span> <span class="n">end_date</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
@@ -189,12 +230,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">test_end</span> <span class="o">=</span> <span class="n">end_date</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">split_date</span><span class="o">=</span><span class="n">split_date</span>
         <span class="n">start_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
-        <span class="n">sep_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">split_date</span><span class="p">)</span> <span class="c1"># Y-M-D</span>
+        <span class="n">sep_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">split_date</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span> <span class="c1"># Y-M-D</span>
         <span class="n">end_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">end_date</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_early</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">sep_idx</span><span class="p">,</span> <span class="p">:]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_later</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">sep_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
 
     <span class="k">def</span> <span class="nf">_train_gp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function to train the GP model. Uses a combo of 3 GPs, with ExpQuad, Rational, and Periodic kernels. Noise is modeled as a combo of WhiteNoise and a Matern32 kernel. MAP is stored in attribute named mp. Conditioned GP is stored in attribute named gp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="n">pm</span><span class="o">.</span><span class="n">Model</span><span class="p">()</span> <span class="k">as</span> <span class="n">model</span><span class="p">:</span>
             <span class="c1"># yearly periodic component x long term trend</span>
             <span class="n">η_per</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">HalfCauchy</span><span class="p">(</span><span class="s2">&quot;η_per&quot;</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span> <span class="n">testval</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
@@ -236,25 +280,37 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mp</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">find_MAP</span><span class="p">(</span><span class="n">include_transformed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_predict_gp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># predict at a 15 day granularity</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;5D&quot;</span><span class="p">)</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function for predicting over specified range. Converts back from normalized values to actual values. Stores result of predictions in attribute named fit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># predict at a 1 day granularity using generated datetime array.</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1D&quot;</span><span class="p">)</span>
         <span class="n">tnew</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dates_to_idx</span><span class="p">(</span><span class="n">dates</span><span class="p">)[:,</span><span class="kc">None</span><span class="p">]</span>
         <span class="n">std_y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;raw_y&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
         <span class="n">first_y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;raw_y&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Predicting with GPM ...&quot;</span><span class="p">)</span>
         <span class="n">mu</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gp</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">tnew</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mp</span><span class="p">,</span> <span class="n">diag</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Convert back from normalized values to raw values.</span>
         <span class="n">mean_pred</span> <span class="o">=</span> <span class="n">mu</span><span class="o">*</span><span class="n">std_y</span> <span class="o">+</span> <span class="n">first_y</span>
         <span class="n">var_pred</span>  <span class="o">=</span> <span class="n">var</span><span class="o">*</span><span class="n">std_y</span><span class="o">**</span><span class="mi">2</span>
 
         <span class="c1"># make dataframe to store fit results</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fit</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="n">tnew</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span>
-                            <span class="s2">&quot;mu_total&quot;</span><span class="p">:</span> <span class="n">mean_pred</span><span class="p">,</span>
-                            <span class="s2">&quot;sd_total&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_pred</span><span class="p">)},</span>
-                           <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+                                 <span class="s2">&quot;mu_total&quot;</span><span class="p">:</span> <span class="n">mean_pred</span><span class="p">,</span>
+                                 <span class="s2">&quot;sd_total&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_pred</span><span class="p">)},</span>
+                                <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_plot_vals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function to get useful values for plotting. Predictions done on non business days are dropped.</span>
+
+<span class="sd">        :returns: A tuple of four arrays, containing the mean predictions, upper/lower bounds of predictions, training data, and test data for comparison.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span>
+
+        <span class="c1"># Search for and remove predictions on non-business days from fit</span>
         <span class="n">k</span><span class="o">=</span><span class="mi">0</span>
         <span class="n">l</span><span class="o">=</span><span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
@@ -264,10 +320,14 @@
                 <span class="n">l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
             <span class="n">k</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
         <span class="n">fit</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">l</span><span class="p">])</span>
+
+        <span class="c1"># Generate upper and lower bound predictions, 2 std deviations away from mean.</span>
         <span class="n">upper</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">mu_total</span><span class="o">.</span><span class="n">values</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">fit</span><span class="o">.</span><span class="n">sd_total</span><span class="o">.</span><span class="n">values</span>
         <span class="n">lower</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">mu_total</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="mi">2</span><span class="o">*</span><span class="n">fit</span><span class="o">.</span><span class="n">sd_total</span><span class="o">.</span><span class="n">values</span>
         <span class="n">band_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
         <span class="n">band_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Generate output data.</span>
         <span class="n">xy_pred</span> <span class="o">=</span> <span class="p">[</span><span class="n">fit</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">mu_total</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fit</span><span class="o">.</span><span class="n">sd_total</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
         <span class="n">std_bounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">band_x</span><span class="p">,</span> <span class="n">band_y</span><span class="p">]</span>
         <span class="n">train_data</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">data_early</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_early</span><span class="p">[</span><span class="s1">&#39;raw_y&#39;</span><span class="p">]]</span>
@@ -275,6 +335,13 @@
         <span class="k">return</span> <span class="n">xy_pred</span><span class="p">,</span> <span class="n">std_bounds</span><span class="p">,</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">test_data</span>
 
     <span class="k">def</span> <span class="nf">_plot_stock_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">show_split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">raw_data</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">rg</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function that plots stock data for desired ticker using Bokeh. Only useful in Jupyter Notebooks.</span>
+
+<span class="sd">        :param show_split: If true, checks if training and testing data split has been generated. If so, will plot a yellowed region indicating split. If not, will generate warning. If false, will not do anything related.</span>
+<span class="sd">        :param raw_data: If true, will plot raw data. If false, will plot normalized data.</span>
+<span class="sd">        :param rg: Array of [start date, end date]. If left None, will default to starting date of stock value data set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># If no range specified, assume whole thing</span>
         <span class="k">if</span> <span class="n">rg</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
             <span class="n">rg</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">start_date</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">end_date</span><span class="p">]</span>
@@ -304,13 +371,20 @@
         <span class="n">show</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_dates_to_idx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tlist</span><span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper function to convert datetime objects into integers useful for training.</span>
+
+<span class="sd">        :param tlist: Numpy array or Pandas Series of datetime objects.</span>
+
+<span class="sd">        :returns: Numpy array of integers representing datetimes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">reference_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_date</span>
         <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">tlist</span> <span class="o">-</span> <span class="n">reference_time</span><span class="p">)</span> <span class="o">/</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">t</span><span class="p">)</span></div>
 
 
 <span class="c1"># if __name__ == &quot;__main__&quot;:</span>
-<span class="c1">#     cms = CashMoneySwag(&#39;AAPL&#39;)</span>
+<span class="c1">#     cms = GPM(&#39;AAPL&#39;)</span>
 <span class="c1">#     rg=[datetime(2019,7,31),datetime(2019,9,30),datetime(2019,10,31)]</span>
 <span class="c1">#     cms.gen_test_train_data(start_date=rg[0],split_date=rg[1],end_date=rg[2])</span>
 <span class="c1">#     cms.train_gp()</span>

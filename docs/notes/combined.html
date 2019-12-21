@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>src.rnn package &mdash; Moneymaker  documentation</title>
+  <title>The approach to combining models &mdash; Stock Prediction API  documentation</title>
   
 
   
@@ -48,7 +48,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Moneymaker
+            <a href="../index.html" class="icon icon-home"> Stock Prediction API
           
 
           
@@ -80,13 +80,14 @@
             
               <p class="caption"><span class="caption-text">Notes</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../notes/about.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/examples.html">Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../notes/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LSTM.html">Understanding the LSTM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GPM.html">Understanding the GPM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">moneymaker</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_build/modules.html">ml_stock_prediction_api</a></li>
 </ul>
 
             
@@ -101,7 +102,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">Moneymaker</a>
+          <a href="../index.html">Stock Prediction API</a>
         
       </nav>
 
@@ -132,13 +133,13 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>src.rnn package</li>
+      <li>The approach to combining models</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/_build/src.rnn.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/notes/combined.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -151,17 +152,11 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="src-rnn-package">
-<h1>src.rnn package<a class="headerlink" href="#src-rnn-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="src-rnn-net-train-module">
-<h2>src.rnn.net_train module<a class="headerlink" href="#src-rnn-net-train-module" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
-</div>
+  <div class="section" id="the-approach-to-combining-models">
+<h1>The approach to combining models<a class="headerlink" href="#the-approach-to-combining-models" title="Permalink to this headline">¶</a></h1>
+<p>Initially, we looked into various methods, such as committee models, mixture of experts, and gaussian mixture models. However, they all either requried specific model setups - such as training the base models and the combining model together, or a lot of overhead in understanding the math in the implementation - such as the gaussian mixture model approach.</p>
+<p>The approach we finally took was to first treat the LSTM output as a distribution, and then combine the LSTM and GP output distributions in a weighted manner. We justify this by pointing out that the LSTM output has a random nature to it, and that randomness can be modeled (like all random models) by a white noise gaussian. Since the rest of the LSTM is deterministic, that randomness will propagate to the result, resulting in a mean and standard distribution. Since the output of the LSTM is essentially a sample from this distribution, we would need many runs of the LSTM to truly generate information about the LSTM. In the interest of computational limitations and time, we only do a few, and approximate out a mean and standard deviation. Following that, we add the two means and standard deviations of the model outputs using a weighting factor alpha. By default, alpha is set to 0.5 - an even split between the models. With the combined mean and standard deviation, we can generate most likely predictions and confidence intervals for the combined output. An image of this result is shown below.</p>
+<img alt="../_images/wcex.png" src="../_images/wcex.png" />
 </div>
 
 
