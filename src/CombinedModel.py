@@ -5,7 +5,7 @@ Code for the combined model approach.
 """
 
 from src.BayesReg import GPM
-from src.StockRNN import StockRNN
+from src.lstm import LSTM
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -28,10 +28,10 @@ class CombinedModel:
         :param ticker: Ticker of stocks to predict
         :param comp_tickers: List of tickers to compare desired ticker against. Used for StockRNN only.
         """
-        self.srnn = StockRNN(ticker, to_compare=comp_tickers,
-                             train_start_date=datetime(2012, 1, 1),
-                             train_end_date=datetime.today(),
-                             try_load_weights=False)
+        self.srnn = LSTM(ticker, to_compare=comp_tickers,
+                         train_start_date=datetime(2012, 1, 1),
+                         train_end_date=datetime.today(),
+                         try_load_weights=False)
         self.cms = GPM(ticker)
 
     def train(self, start_date, pred_start, pred_end, mw=0.5, n_epochs=10):
@@ -85,19 +85,19 @@ class CombinedModel:
         :param n_days_pred: Number of days to predict ahead. Will only predict on business days.
         :param n_epochs: Number of epochs to train the LSTM. Defaults to 10.
         """
-        srdf = self.srnn.companies[0].data_frame
+        srdf = self.srnn.classes[0].data_frame
         srdfdt = pd.to_datetime(srdf.Date)
         raw_p_st_idx = srdfdt.searchsorted(pred_start)
         p_st_idx = raw_p_st_idx + srdf.index[0]
         raw_p_e_idx = raw_p_st_idx + self.n_days_pred
         try:
             self.srnn.to(DEVICE)
-            self.srnn.__togpu__(True)
+            self.srnn.toGPU(True)
         except RuntimeError:
             print(TO_GPU_FAIL_MSG)
         except AssertionError:
             print(TO_GPU_FAIL_MSG)
-            self.srnn.__togpu__(False)
+            self.srnn.toGPU(False)
 
         self.srnn.do_training(num_epochs=n_epochs)
         self.m_srnn, self.std_srnn = self.srnn.pred_in_conj(p_st_idx, n_days_pred)

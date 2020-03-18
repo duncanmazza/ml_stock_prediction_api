@@ -88,7 +88,7 @@ def return_numpy_array_of_company_daily_stock_percent_change(company: Company):
     :param company:
     :return:
     """
-    stock_data = company.return_numpy_array_of_company_daily_stock_percent_change()
+    stock_data = company.percent_change_of_time_series()
     assert type(stock_data) == np.ndarray
     assert len(stock_data) == 2
     compare_array = np.array([0.00829516, 0.00380573])

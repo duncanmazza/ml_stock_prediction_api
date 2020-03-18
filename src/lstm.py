@@ -18,14 +18,14 @@ from pandas import _libs
 from pandas_datareader._utils import RemoteDataError
 import os
 
+# macros
 ZERO_TIME = " 00:00:00"
-
 DEVICE = "cuda"  # selects the gpu to be used
 TO_GPU_FAIL_MSG = "Unable to successfully run model.to('{}'). If running in Collaboratory, make sure " \
                   "that you have enabled the GPU your settings".format(DEVICE)
 
 
-class StockRNN(nn.Module):
+class LSTM(nn.Module):
     r"""
     Class for training on and predicting stocks using a LSTM network
     """
@@ -60,11 +60,11 @@ class StockRNN(nn.Module):
         :param try_load_weights: boolean for whether the model should search for a cached model state dictionary
         :param save_state_dict: boolean for whether the model should cache its weights as a state dictionary
         """
-        super(StockRNN, self).__init__()
+        super(LSTM, self).__init__()
 
         # variable indicating success of calling self.to(DEVICE), where 0 indicates that it hasn't been tried yet, -1 
         # indicates that it failed, and 1 indicates that it was successful  
-        self.__togpu_works__ = 0
+        self.__togpu_works = False
 
         # __init__ params
         self.lstm_hidden_size = lstm_hidden_size
@@ -91,7 +91,7 @@ class StockRNN(nn.Module):
             self.label_length = label_length
 
         # company in index 0 is the company whose stock is being predicted
-        self.companies = [Company(self.ticker, self.train_start_date, self.train_end_date)]
+        self.classes = [Company(self.ticker, self.train_start_date, self.train_end_date)]
 
         start_date_changes = []
         end_date_changes = []
@@ -99,7 +99,7 @@ class StockRNN(nn.Module):
             to_compare.sort()
             for company_ticker in to_compare:
                 try:
-                    self.companies.append(Company(company_ticker, self.train_start_date, self.train_end_date))
+                    self.classes.append(Company(company_ticker, self.train_start_date, self.train_end_date))
                 except KeyError:
                     print("There was a KeyError exception raised when accessing data for the ticker {}; will skip this "
                           "ticker".format(company_ticker))
@@ -113,25 +113,25 @@ class StockRNN(nn.Module):
                           .format(company_ticker))
                     continue
 
-                if self.companies[-1].start_date_changed:
-                    start_date_changes.append(self.companies[-1].start_date)
-                if self.companies[-1].end_date_changed:
-                    end_date_changes.append(self.companies[-1].end_date)
+                if self.classes[-1].start_date_changed:
+                    start_date_changes.append(self.classes[-1].start_date)
+                if self.classes[-1].end_date_changed:
+                    end_date_changes.append(self.classes[-1].end_date)
 
-        self.num_companies = len(self.companies)
+        self.num_classes = len(self.classes)
 
         if len(start_date_changes) != 0:  # revise the start date of all of the data if necessary
             self.train_start_date = max(start_date_changes)
-            for company in self.companies:
-                company.revise_start_date(self.train_start_date)
+            for class_ in self.classes:
+                class_.revise_start_date(self.train_start_date)
             print("Data did not exist for every ticker at start date of {}; revising to the most recent starting time "
                   "(common among all companies' data) of {}".format(train_start_date.__str__().strip(ZERO_TIME),
                                                                     self.train_start_date.__str__().strip(ZERO_TIME)))
         # revise the end date of all of the data
         if len(end_date_changes) != 0:
             self.train_end_date = min(end_date_changes)
-            for company in self.companies:
-                company.revise_end_date(self.train_end_date)
+            for class_ in self.classes:
+                class_.revise_end_date(self.train_end_date)
             print("Data did not exist for every ticker at end date of {}; revising to the earliest ending time "
                   "(common among all companies' data) of {}".format(train_end_date.__str__().strip(ZERO_TIME),
                                                                     self.train_end_date.__str__().strip(ZERO_TIME)))
@@ -139,32 +139,33 @@ class StockRNN(nn.Module):
         self.end_date_str = self.train_end_date.__str__().strip(ZERO_TIME)
 
         # sting that describes the parameters for this model such that files for weights can be successfully loaded
-        if self.num_companies > 1:
-            considering_string = "_CONSIDERING_" + "&".join(list(map(lambda company:
-                                                                     company.ticker, self.companies[1:])))
+        if self.num_classes > 1:
+            considering_string = "_CONSIDERING_" + "&".join(list(map(lambda class_:
+                                                                     class_.ticker, self.classes[1:])))
         else:
             considering_string = ""
-        self.identifier = "MODEL_FOR_" + self.companies[0].ticker + considering_string + \
+
+        self.identifier = "MODEL_FOR_" + self.classes[0].ticker + considering_string + \
                           "_WITH_lstm_hidden_size_{}_lstm_num_layers_{}_input_size_{}_sequence_" \
                           "segment_length_{}".format(
                               self.lstm_hidden_size,
                               self.lstm_num_layers,
-                              self.num_companies,
+                              self.num_classes,
                               self.sequence_segment_length)
 
         self.model_weights_path = os.path.join(os.getcwd(), ".cache", self.identifier + ".bin")
 
         # initialize objects used during forward pass
-        self.lstm = nn.LSTM(input_size=self.num_companies, hidden_size=self.lstm_hidden_size,
+        self.lstm = nn.LSTM(input_size=self.num_classes, hidden_size=self.lstm_hidden_size,
                             num_layers=self.lstm_num_layers, dropout=self.drop_prob, batch_first=True)
         self.post_lstm_dropout = nn.Dropout(p=self.drop_prob)
         self.fc_1 = nn.Linear(self.lstm_hidden_size, 10)
-        self.fc_2 = nn.Linear(10, self.num_companies)
+        self.fc_2 = nn.Linear(10, self.num_classes)
         self.tanh = nn.Tanh()
         # self.rescaler = Rescaler(-0.5, 0.5)
 
         # initialize attributes with placeholder arrays
-        self.daily_stock_data = np.array(0)
+        self.time_series_percent_change_array = np.array(0)
         self.train_sample_indices = np.array(0)
         self.test_sample_indices = np.array(0)
         self.train_loader_len = 0
@@ -173,11 +174,10 @@ class StockRNN(nn.Module):
 
         # initialize optimizer and loss
         self.loss = nn.MSELoss()
-
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.auto_populate:
-            self.populate_daily_stock_data()
+            self.populate_time_series_data_array()
             self.populate_test_train()
             self.populate_loaders()
 
@@ -191,17 +191,14 @@ class StockRNN(nn.Module):
             except:
                 print("WARNING: Could not load state dict for an unknown reason")
 
-    def __togpu__(self, successful):
-        r"""
-        Sets the value of :attr:`__togpu_works__`, which is used in such a way that expensive error catching isn't run
-        every epoch of training.
-
-        :param successful: boolean for whether ``.to(gpu)`` was called successfully
-        """
-        if successful:
-            self.__togpu_works__ = 1
-        else:
-            self.__togpu_works__ = -1
+        try:
+            self.to(DEVICE)
+            self.__togpu_works = True
+        except RuntimeError:
+            print(TO_GPU_FAIL_MSG)
+        except AssertionError:
+            print(TO_GPU_FAIL_MSG)
+            self.__togpu_works = False
 
     def peek_dataset(self, figsize: (int, int) = (10, 5)):
         r"""
@@ -209,25 +206,25 @@ class StockRNN(nn.Module):
 
         :param figsize: tuple of integers for :class:`plt.subplots` ``figsize`` argument
         """
-        if self.num_companies == 1:
+        if self.num_classes == 1:
             _, axes = plt.subplots(1, 1, figsize=figsize)
-            axes.plot(self.daily_stock_data[0, :])
-            axes.set_title("'{}' closing price day-over-day % change from {} to {}".format(self.companies[0].ticker,
+            axes.plot(self.time_series_percent_change_array[0, :])
+            axes.set_title("'{}' closing price day-over-day % change from {} to {}".format(self.classes[0].ticker,
                                                                                            self.start_date_str,
                                                                                            self.end_date_str))
             axes.set_xlabel("Time")
             axes.set_ylabel("Price (USD)")
         else:
             _, axes = plt.subplots(2, 1, figsize=figsize)
-            axes[0].plot(self.daily_stock_data[0, :])
+            axes[0].plot(self.time_series_percent_change_array[0, :])
             axes[0].set_title(
-                "'{}' closing price day-over-day % change from {} to {}".format(self.companies[0].ticker,
+                "'{}' closing price day-over-day % change from {} to {}".format(self.classes[0].ticker,
                                                                                 self.start_date_str, self.end_date_str))
             axes[0].set_xlabel("Time")
             axes[0].set_ylabel("Price (USD)")
 
-            for c, company in enumerate(self.companies):
-                axes[1].plot(self.daily_stock_data[c, :], label=company.ticker)
+            for c, company in enumerate(self.classes):
+                axes[1].plot(self.time_series_percent_change_array[c, :], label=company.ticker)
             axes[1].legend()
             axes[1].set_title(
                 "All companies' closing price day-over-day % change from {} to {}".format(self.start_date_str,
@@ -237,45 +234,43 @@ class StockRNN(nn.Module):
 
         plt.show()
 
-    def populate_daily_stock_data(self):
+    def populate_time_series_data_array(self):
         r"""
-        Populates ``self.daily_stock_data`` with the day-over-day percent change of the closing stock prices. The data
-        for each company is truncated such that each company's array of data is the same length as the rest and such
+        Populates ``self.time_series_percent_change_list`` with the day-over-day percent change of the closing stock prices. The data
+        for each class_ is truncated such that each class_'s array of data is the same length as the rest and such
         that their length is divisible by :attr:` sequence_segment_length`.
         """
-        daily_stock_data = []
-        daily_stock_data_lens = []
+        time_series_percent_change_list = []
+        time_series_data_lengths = []
         data_is_of_same_len = True
-        for company in self.companies:
-            daily_stock_data.append(company.return_numpy_array_of_company_daily_stock_percent_change())
-            daily_stock_data_lens.append(len(daily_stock_data[-1]))
-            if daily_stock_data_lens[0] != daily_stock_data_lens[-1]:
+        for class_ in self.classes:
+            time_series_percent_change_list.append(class_.percent_change_of_time_series())
+            time_series_data_lengths.append(len(time_series_percent_change_list[-1]))
+            if time_series_data_lengths[0] != time_series_data_lengths[-1]:
                 data_is_of_same_len = False
 
-        self.data_len = min(daily_stock_data_lens)
+        self.data_len = min(time_series_data_lengths)
         mod = self.data_len % self.sequence_segment_length
         if not data_is_of_same_len or mod != 0:
             self.data_len -= mod
-            for c in range(self.num_companies):
-                daily_stock_data[c] = daily_stock_data[c][-self.data_len:]
+            for c in range(self.num_classes):
+                time_series_percent_change_list[c] = time_series_percent_change_list[c][-self.data_len:]
 
-        try:
-            assert self.data_len >= 2 * self.sequence_segment_length
-        except AssertionError:
+        if not self.data_len >= 2 * self.sequence_segment_length:
             print("The specified segment length for the data to be split up into, {}, would result in "
-                  "a dataset of only one segment because the self.daily_stock_data array is of length {}"
+                  "a dataset of only one segment because the self.time_series_percent_change_list array is of length {}"
                   "; a minimum of 2 must be created for a train/test split (although there clearly needs"
                   " to be more than 2 data points to train the model)."
                   .format(self.sequence_segment_length, self.data_len))
             raise AssertionError
 
-        self.daily_stock_data = np.array(daily_stock_data)
+        self.time_series_percent_change_array = np.array(time_series_percent_change_list)
 
     def populate_test_train(self, rand_seed: int = -1):
         r"""
         Populates ``self.train_data`` and ``self.test_data`` tensors with complimentary subsets of the sequences of
-        ``self.daily_stock_data``, where the sequences are the ``self.sequence_length`` length sequences of data that,
-        when  concatenated, comprise ``self.daily_stock_data``.
+        ``self.time_series_percent_change_array``, where the sequences are the ``self.sequence_length``
+        length sequences of data that, when  concatenated, comprise ``self.time_series_percent_change_array``.
 
         :param rand_seed: value to seed the random number generator; if -1 (or any value < 0), then do not
             seed the random number generator.
@@ -284,9 +279,10 @@ class StockRNN(nn.Module):
         # integer (should be no rounding)
 
         # shape of segmented_data: (batch_size, num_features, sequence_length)
-        segmented_data = np.zeros((num_segments, self.num_companies, self.sequence_segment_length))
-        for c in range(self.num_companies):
-            segmented_data[:, c, :] = self.daily_stock_data[c, :].reshape((num_segments, self.sequence_segment_length))
+        segmented_data = np.zeros((num_segments, self.num_classes, self.sequence_segment_length))
+        for c in range(self.num_classes):
+            segmented_data[:, c, :] = self.time_series_percent_change_array[c, :].reshape(
+                (num_segments, self.sequence_segment_length))
         num_train_segments = round(num_segments * self.train_data_prop)
         if num_segments == num_train_segments:
             # If true, this means that there would be no data for testing (because the train/test ratio is very high
@@ -295,18 +291,16 @@ class StockRNN(nn.Module):
 
         if rand_seed >= 0:
             np.random.seed(rand_seed)  # useful for unit testing
-
         all_indices = np.array(range(num_segments), dtype=np.int64)
         np.random.shuffle(all_indices)
         self.train_sample_indices = all_indices[0:num_train_segments]
         self.test_sample_indices = np.array(list(set(range(num_segments)) - set(self.train_sample_indices)))
         del all_indices
 
-        # X_train: Tensor = torch.from_numpy(self.rescaler.rescale_train(segmented_data[self.train_sample_indices, :, :])).float()
-        # X_test: Tensor = torch.from_numpy(self.rescaler.rescale_test(segmented_data[self.test_sample_indices, :, :])).float()
         X_train: Tensor = torch.from_numpy(segmented_data[self.train_sample_indices, :, :]).float()
         X_test: Tensor = torch.from_numpy(segmented_data[self.test_sample_indices, :, :]).float()
         del segmented_data
+
         # the data for the labels is the data in the first position of the features dimension
         y_train: Tensor = X_train[:, :, -self.label_length:]
         y_test: Tensor = X_test[:, :, -self.label_length:]
@@ -320,7 +314,7 @@ class StockRNN(nn.Module):
         :return: training DataLoader
         :return: testing DataLoader
         """
-        if self.__togpu_works__ == 1:
+        if self.__togpu_works:
             return [
                 DataLoader(
                     self.train_set,
@@ -435,7 +429,7 @@ class StockRNN(nn.Module):
             for i, data in enumerate(self.train_loader, 0):
                 train_inputs, train_labels = data
                 # send inputs and labels to the gpu if possible
-                if self.__togpu_works__ == 1:
+                if self.__togpu_works:
                     train_inputs.to(DEVICE)
                     train_labels.to(DEVICE)
                 # otherwise, ``inputs`` and ``labels`` are already tensors
@@ -468,7 +462,7 @@ class StockRNN(nn.Module):
                     axes = [axes, ]
             for i, data in enumerate(self.test_loader, 0):
                 test_inputs, test_labels = data
-                if self.__togpu_works__ == 1:  # send inputs and labels to the gpu if possible
+                if self.__togpu_works:  # send inputs and labels to the gpu if possible
                     test_inputs.to(DEVICE)
                     test_labels.to(DEVICE)
                 output = self.forward(test_inputs)
@@ -482,7 +476,7 @@ class StockRNN(nn.Module):
                                  label="pred")
                     axes[i].set_title(
                         "'{}' closing price day-over-day % change\nfrom {} to {}: Example {} of\nOriginal vs. Model "
-                        "Output".format(self.companies[0].ticker, self.start_date_str, self.end_date_str, i))
+                        "Output".format(self.classes[0].ticker, self.start_date_str, self.end_date_str, i))
                     axes[i].set_xlabel("Time")
                     axes[i].set_ylabel("% Change of Stock (USD)")
 
@@ -514,7 +508,8 @@ class StockRNN(nn.Module):
                 torch.save(self.state_dict(), self.model_weights_path)
                 print(" > (saved model weights to '{}' folder)".format(os.path.join(os.getcwd(), ".cache")))
             except:
-                print("WARNING: an unknown exception occured when trying to save model weights")
+                print("WARNING: an unknown exception occured when trying to save model weights. Because this is not a"
+                      "critical error, no exception will be raised.")
 
         if plot_loss:
             _, axes = plt.subplots(1, 1, figsize=plot_loss_figsize)
@@ -548,41 +543,44 @@ class StockRNN(nn.Module):
         """
         input_and_pred_len = self.sequence_segment_length + predict_beyond
         if data_start_indices is None:
-            data_start_indices = np.random.choice(self.daily_stock_data.shape[1] - input_and_pred_len, num_plots)
+            data_start_indices = np.random.choice(self.time_series_percent_change_array.shape[1] - input_and_pred_len,
+                                                  num_plots)
 
         start_train_datetimes = []  # holds datetime objects corresponding to the data_start_indices
         end_pred_datetimes = []  # holds datetime objects corresponding to the data_start_indices
         pred_data_start_indicies = []  # indices for the start of predictions
-        train_and_actual_data = torch.zeros((num_plots, self.num_companies, input_and_pred_len))
+        train_and_actual_data = torch.zeros((num_plots, self.num_classes, input_and_pred_len))
         for i in range(num_plots):
             train_and_actual_data[i, :, :] = torch.from_numpy(
-                self.daily_stock_data[:, data_start_indices[i]:data_start_indices[i] + input_and_pred_len])
-            start_train_datetimes.append(self.companies[0].get_date_at_index(data_start_indices[i]))
-            end_pred_datetimes.append(self.companies[0].get_date_at_index(data_start_indices[i] + input_and_pred_len))
+                self.time_series_percent_change_array[:,
+                data_start_indices[i]:data_start_indices[i] + input_and_pred_len])
+            start_train_datetimes.append(self.classes[0].get_date_at_index(data_start_indices[i]))
+            end_pred_datetimes.append(self.classes[0].get_date_at_index(data_start_indices[i] + input_and_pred_len))
             pred_data_start_indicies.append(data_start_indices[i] + input_and_pred_len - predict_beyond)
 
         # pass in the data for training
-        output_numpy = self.forward(train_and_actual_data[:, :, :-(predict_beyond + 1)], predict_beyond).detach().\
+        output_numpy = self.forward(train_and_actual_data[:, :, :-(predict_beyond + 1)], predict_beyond).detach(). \
             numpy()
 
-        orig_stock_list = []
-        pred_stock_list = []
-        actual_stock_list = []
+        orig_time_series = []
+        pred_time_series = []
+        actual_time_series = []
         disparity_list = []
         for i in range(num_plots):
-            orig_stock_list.append(self.companies[0].data_frame["Close"].iloc[
-                                       list(range(data_start_indices[i], pred_data_start_indicies[i], 1))])
-            pred_stock_list.append(
-                self.companies[0].reconstruct_stock_from_percent_change(output_numpy[i, 0, -predict_beyond:],
-                                                                        initial_condition_index=(
-                                                                                pred_data_start_indicies[
-                                                                                    i] - 1))[1:])
-            actual_stock_list.append(self.companies[0].data_frame["Close"].iloc[
-                list(range(pred_data_start_indicies[i], pred_data_start_indicies[i] + predict_beyond))].values)
-            disparity_list.append(np.abs(pred_stock_list[i] - actual_stock_list[i]))
+            orig_time_series.append(self.classes[0].data_frame["Close"].iloc[
+                                        list(range(data_start_indices[i], pred_data_start_indicies[i], 1))])
+            pred_time_series.append(
+                self.classes[0].reconstruct_stock_from_percent_change(output_numpy[i, 0, -predict_beyond:],
+                                                                      initial_condition_index=(
+                                                                              pred_data_start_indicies[
+                                                                                  i] - 1))[1:])
+            actual_time_series.append(self.classes[0].data_frame["Close"].iloc[
+                                          list(range(pred_data_start_indicies[i],
+                                                     pred_data_start_indicies[i] + predict_beyond))].values)
+            disparity_list.append(np.abs(pred_time_series[i] - actual_time_series[i]))
 
         return input_and_pred_len, start_train_datetimes, end_pred_datetimes, pred_data_start_indicies, \
-               train_and_actual_data, output_numpy, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list
+               train_and_actual_data, output_numpy, orig_time_series, pred_time_series, actual_time_series, disparity_list
 
     def check_sliding_window_valid_at_index(self, end_pred_index, pred_beyond_range):
         r"""
@@ -624,12 +622,15 @@ class StockRNN(nn.Module):
             # the start of the desired index is the end value index decreased by the length of the prediction and the
             # training sequence length; the start index is then shifted back as the number of days that is predicted
             # beyond increases
-            _, _, _, _, _, _, _, pred_stock_list, actual_stock_list, _ = self.make_prediction_with_validation(i,
-                            num_plots=1, data_start_indices=np.array([end_pred_index - self.sequence_segment_length -
-                                                                      pred_beyond_range_delta - i]))
-            predicted_value_list.append(pred_stock_list[0][-1])
-            debug.append(actual_stock_list[0][-1])
-        return predicted_value_list, actual_stock_list[0][-1]
+            _, _, _, _, _, _, _, pred_time_series, actual_time_series, _ = \
+                self.make_prediction_with_validation(
+                    i,
+                    num_plots=1,
+                    data_start_indices=np.array([end_pred_index - self.sequence_segment_length -
+                                                 pred_beyond_range_delta - i]))
+            predicted_value_list.append(pred_time_series[0][-1])
+            debug.append(actual_time_series[0][-1])
+        return predicted_value_list, actual_time_series[0][-1]
 
     def pred_in_conj(self, start_of_pred_idx: int, n_days: int, pred_beyond_range: (int, int) = (1, 10)):
         r"""
@@ -677,7 +678,7 @@ class StockRNN(nn.Module):
         :plt_scl: integer for width and heigh parameters of matplotlib plot
         """
         forward_seq_len, start_dates, end_dates, pred_data_start_indicies, make_pred_data, \
-        output_numpy, orig_stock_list, pred_stock_list, actual_stock_list, disparity_list = \
+        output_numpy, orig_time_series_data, pred_time_series_data, actual_time_series_data, disparity_list = \
             self.make_prediction_with_validation(predict_beyond, num_plots)
         pred_beyond_plot_indices = np.arange(self.sequence_segment_length, forward_seq_len)
         pred_over_input_plot_indices = np.arange(1, self.sequence_segment_length)
@@ -697,16 +698,17 @@ class StockRNN(nn.Module):
             axes[ax][0].plot(pred_beyond_plot_indices,
                              make_pred_data.detach().numpy()[ax, 0, self.sequence_segment_length:], label="actual",
                              linestyle='-', marker='o')
-            axes[ax][0].set_title("{} % change from\n{} to {}".format(self.companies[0].ticker,
+            axes[ax][0].set_title("{} % change from\n{} to {}".format(self.classes[0].ticker,
                                                                       start_dates[ax], end_dates[ax]))
             axes[ax][0].set_xlabel("Business days since {}".format(start_dates[ax]))
             axes[ax][0].set_ylabel("% Change")
             axes[ax][0].legend()
-            axes[ax][1].plot(pred_beyond_plot_indices, pred_stock_list[ax], color="green",
+            axes[ax][1].plot(pred_beyond_plot_indices, pred_time_series_data[ax], color="green",
                              label="pred. beyond", linestyle='--', marker='o')
-            axes[ax][1].plot(input_plot_indices, orig_stock_list[ax], color='red', label="input", linestyle='-', marker='o')
-            axes[ax][1].plot(pred_beyond_plot_indices, actual_stock_list[ax], label="actual", linestyle='-', marker='o')
-            axes[ax][1].set_title("{} stock from\n{} to {}".format(self.companies[0].ticker, start_dates[ax],
+            axes[ax][1].plot(input_plot_indices, orig_time_series_data[ax], color='red', label="input", linestyle='-',
+                             marker='o')
+            axes[ax][1].plot(pred_beyond_plot_indices, actual_time_series_data[ax], label="actual", linestyle='-', marker='o')
+            axes[ax][1].set_title("{} stock from\n{} to {}".format(self.classes[0].ticker, start_dates[ax],
                                                                    end_dates[ax]))
             axes[ax][1].set_xlabel("Business days since {}".format(start_dates[ax]))
             axes[ax][1].set_ylabel("Stock Price")
@@ -720,24 +722,15 @@ class StockRNN(nn.Module):
 
 
 if __name__ == "__main__":
-    model: StockRNN
+    model: LSTM
 
     # set to switch between loading saved weights if available
     try_load_weights = True
 
-    model = StockRNN("AAPL", to_compare=["GOOGL", "MSFT", "MSI"], train_start_date=datetime(2012, 1, 1),
-                     train_end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
+    model = LSTM("AAPL", to_compare=["GOOGL", "MSFT", "MSI"], train_start_date=datetime(2012, 1, 1),
+                 train_end_date=datetime(2019, 1, 1), try_load_weights=try_load_weights)
     # model = StockRNN("dummy")
     # model.peek_dataset()
-
-    try:
-        model.to(DEVICE)
-        model.__togpu__(True)
-    except RuntimeError:
-        print(TO_GPU_FAIL_MSG)
-    except AssertionError:
-        print(TO_GPU_FAIL_MSG)
-        model.__togpu__(False)
 
     # model.do_training(num_epochs=100)
 

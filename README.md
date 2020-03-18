@@ -24,7 +24,7 @@ This will open a server on http://localhost:5006/ml_stock_prediction_api. Open t
 
 To run the LSTM code, run:
 ```shell script
-python src/StockRNN.py
+python src/lstm.py
 ```
 
 The code must be run from the root of the repository, or the PYTHONPATH enviornment variable should be set to the root of the repository. Additionally, to pull data from the Yahoo finance data api, you must have an internet connection for at least the first time you request a dataset (each query's returned data is cached in .cache/)

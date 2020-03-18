@@ -184,7 +184,7 @@ class Company:
             self.populate_dataframe()
         return np.array(self.data_frame["Close"])
 
-    def return_numpy_array_of_company_daily_stock_percent_change(self, rolling_avg_length: int = 4) -> np.ndarray:
+    def percent_change_of_time_series(self, rolling_avg_length: int = 4) -> np.ndarray:
         """
         Converts the numpy array of the closing stock data (acquired by calling
         :method:`return_numpy_array_of_company_daily_stock_close`) into an array of day-over-day percent change.
