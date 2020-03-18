@@ -20,14 +20,6 @@ src.CombinedModel module
    :undoc-members:
    :show-inheritance:
 
-src.StockRNN module
--------------------
-
-.. automodule:: src.StockRNN
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 src.get\_data module
 --------------------
 
@@ -36,10 +28,10 @@ src.get\_data module
    :undoc-members:
    :show-inheritance:
 
-src.prob\_train module
-----------------------
+src.lstm module
+---------------
 
-.. automodule:: src.prob_train
+.. automodule:: src.lstm
    :members:
    :undoc-members:
    :show-inheritance:
